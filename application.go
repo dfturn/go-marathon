@@ -70,6 +70,7 @@ type Application struct {
 	AcceptedResourceRoles []string            `json:"acceptedResourceRoles,omitempty"`
 	LastTaskFailure       *LastTaskFailure    `json:"lastTaskFailure,omitempty"`
 	Fetch                 *[]Fetch            `json:"fetch,omitempty"`
+	IPAddress             *IPAddressInfo      `json:"ipAddress,omitempty"`
 }
 
 // ApplicationVersions is a collection of application versions for a specific app in marathon

@@ -39,6 +39,7 @@ type Task struct {
 	StartedAt          string               `json:"startedAt"`
 	IPAddresses        []*IPAddress         `json:"ipAddresses"`
 	Version            string               `json:"version"`
+	State              string               `json:"state"`
 }
 
 // IPAddress represents a task's IP address and protocol.

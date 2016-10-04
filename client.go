@@ -211,7 +211,7 @@ func NewClient(config Config) (Marathon, error) {
 		cluster:         cluster,
 		httpClient:      config.HTTPClient,
 		debugLog:        log.New(debugLogOutput, "", 0),
-		pollingWaitTime: time.Duration(config.PollingWaitTime) * time.Millisecond,
+		pollingWaitTime: config.PollingWaitTime,
 	}, nil
 }
 

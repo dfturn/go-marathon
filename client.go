@@ -68,6 +68,17 @@ type Marathon interface {
 	// wait of application
 	WaitOnApplication(name string, timeout time.Duration) error
 
+	// -- PODS ---
+
+	// get pod status
+	GetPodStatus(name string) (*PodStatus, error)
+	// create pod
+	CreatePod(pod *Pod) (*Pod, error)
+	// delete pod
+	DeletePod(name string) (*DeploymentID, error)
+	// wait on pod to deploy
+	WaitOnPod(name string, timeout time.Duration) error
+
 	// -- TASKS ---
 
 	// get a list of tasks for a specific application
@@ -286,6 +297,8 @@ func (r *marathonClient) apiCall(method, uri string, body, result interface{}) e
 		return err
 	}
 
+	r.debugLog.Printf("apiCall(): respBody = %+v\n", string(respBody))
+
 	if len(jsonBody) > 0 {
 		r.debugLog.Printf("apiCall(): %v %v %s returned %v %s\n", request.Method, request.URL.String(), jsonBody, response.Status, oneLogLine(respBody))
 	} else {
@@ -294,6 +307,7 @@ func (r *marathonClient) apiCall(method, uri string, body, result interface{}) e
 
 	if response.StatusCode >= 200 && response.StatusCode <= 299 {
 		if result != nil {
+			r.debugLog.Printf("apiCall(): result = %+v\n", result)
 			if err := json.Unmarshal(respBody, result); err != nil {
 				r.debugLog.Printf("apiCall(): failed to unmarshall the response from marathon, error: %s\n", err)
 				return ErrInvalidResponse

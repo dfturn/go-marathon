@@ -48,8 +48,9 @@ func (p *Pod) String() string {
 }
 
 type PodContainerImage struct {
-	Kind string `json:"kind"`
-	ID   string `json:"id"`
+	Kind      string `json:"kind"`
+	ID        string `json:"id"`
+	ForcePull bool   `json:"forcePull,omitempty"`
 }
 
 type PodResources struct {
@@ -154,4 +155,33 @@ type PodSchedulingPolicy struct {
 type PodVolume struct {
 	Name string `json:"name"`
 	Host string `json:"host"`
+}
+
+// CreatePod creates a new application in Marathon
+// 		application:		the structure holding the application configuration
+func (r *marathonClient) CreatePod(pod *Pod) (*Pod, error) {
+	result := new(Pod)
+	if err := r.apiPost(marathonAPIPods, &pod, result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// DeleteApplication deletes an application from marathon
+// 		name: 		the id used to identify the application
+//		force:		used to force the delete operation in case of blocked deployment
+func (r *marathonClient) DeletePod(name string) (*DeploymentID, error) {
+	uri := buildPodURI(name)
+	// step: check of the application already exists
+	deployID := new(DeploymentID)
+	if err := r.apiDelete(uri, nil, deployID); err != nil {
+		return nil, nil // TODO: Get headers and get the deployment ID
+	}
+
+	return deployID, nil
+}
+
+func buildPodURI(path string) string {
+	return fmt.Sprintf("%s/%s", marathonAPIPods, trimRootPath(path))
 }

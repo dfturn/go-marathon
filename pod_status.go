@@ -8,9 +8,9 @@ import (
 type PodState string
 
 const (
-	PodStateDegraded PodState = "degraded"
-	PodStateStable   PodState = "stable"
-	PodStateTerminal PodState = "terminal"
+	PodStateDegraded PodState = "DEGRADED"
+	PodStateStable   PodState = "STABLE"
+	PodStateTerminal PodState = "TERMINAL"
 )
 
 type PodStatus struct {

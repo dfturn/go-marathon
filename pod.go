@@ -23,19 +23,18 @@ import (
 
 // Pod is the definition for an pod in marathon
 type Pod struct {
-	Containers  []*PodContainer      `json:"containers,omitempty"`
-	Environment *map[string]string   `json:"environment,omitempty"`
-	ID          string               `json:"id,omitempty"`
-	Labels      *map[string]string   `json:"labels,omitempty"`
-	Networks    []*PodNetwork        `json:"networks,omitempty"`
-	Scaling     *PodScalingPolicy    `json:"scaling,omitempty"`
-	Scheduling  *PodSchedulingPolicy `json:"scheduling,omitempty"`
-	User        string               `json:"user,omitempty"`
-	Version     string               `json:"version,omitempty"`
-	Volumes     []*PodVolume         `json:"volumes,omitempty"`
+	Containers  []*PodContainer         `json:"containers,omitempty"`
+	Environment *map[string]interface{} `json:"environment,omitempty"`
+	ID          string                  `json:"id,omitempty"`
+	Labels      *map[string]string      `json:"labels,omitempty"`
+	Networks    []*PodNetwork           `json:"networks,omitempty"`
+	Scaling     *PodScalingPolicy       `json:"scaling,omitempty"`
+	Scheduling  *PodSchedulingPolicy    `json:"scheduling,omitempty"`
+	User        string                  `json:"user,omitempty"`
+	Version     string                  `json:"version,omitempty"`
+	Volumes     []*PodVolume            `json:"volumes,omitempty"`
 
-	// TODO
-	// Secrets
+	Secrets *map[string]Secret `json:"secrets,omitempty"`
 }
 
 func (p *Pod) String() string {
@@ -45,6 +44,10 @@ func (p *Pod) String() string {
 	}
 
 	return string(s)
+}
+
+type Secret struct {
+	Source string `json:"source"`
 }
 
 type PodContainerImage struct {
@@ -104,17 +107,17 @@ type PodArtifact struct {
 }
 
 type PodContainer struct {
-	Name         string             `json:"name"`
-	Exec         *PodExec           `json:"exec,omitempty"`
-	Resources    *PodResources      `json:"resources"`
-	Endpoints    []*PodEndpoints    `json:"endpoints,omitempty"`
-	Image        *PodContainerImage `json:"image"`
-	Environment  *map[string]string `json:"environment,omitempty"`
-	User         string             `json:"user,omitempty"`
-	HealthCheck  *PodHealthCheck    `json:"healthCheck,omitempty"`
-	VolumeMounts []*PodVolumeMounts `json:"volumeMounts,omitempty"`
-	Artifacts    []PodArtifact      `json:"artifacts,omitempty"`
-	Labels       *map[string]string `json:"labels,omitempty"`
+	Name         string                  `json:"name"`
+	Exec         *PodExec                `json:"exec,omitempty"`
+	Resources    *PodResources           `json:"resources"`
+	Endpoints    []*PodEndpoints         `json:"endpoints,omitempty"`
+	Image        *PodContainerImage      `json:"image"`
+	Environment  *map[string]interface{} `json:"environment,omitempty"`
+	User         string                  `json:"user,omitempty"`
+	HealthCheck  *PodHealthCheck         `json:"healthCheck,omitempty"`
+	VolumeMounts []*PodVolumeMounts      `json:"volumeMounts,omitempty"`
+	Artifacts    []PodArtifact           `json:"artifacts,omitempty"`
+	Labels       *map[string]string      `json:"labels,omitempty"`
 	//Lifecycle interface{} `json:"lifecycle"`
 }
 

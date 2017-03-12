@@ -111,7 +111,7 @@ func (r *marathonClient) WaitOnPod(name string, timeout time.Duration) error {
 	}
 
 	timeoutTimer := time.After(timeout)
-	ticker := time.NewTicker(r.pollingWaitTime)
+	ticker := time.NewTicker(r.config.PollingWaitTime)
 	defer ticker.Stop()
 
 	for {

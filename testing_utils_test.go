@@ -44,9 +44,23 @@ const (
 )
 
 var (
-	fakeResponses map[string]string
+	fakeResponses map[string][]indexedResponse
 	once          sync.Once
 )
+
+type indexedResponse struct {
+	Index   int    `yaml:"index,omitempty"`
+	Content string `yaml:"content,omitempty"`
+}
+
+type responseIndices struct {
+	sync.Mutex
+	m map[string]int
+}
+
+func newResponseIndices() *responseIndices {
+	return &responseIndices{m: map[string]int{}}
+}
 
 // restMethod represents an expected HTTP method and an associated fake response
 type restMethod struct {
@@ -56,20 +70,23 @@ type restMethod struct {
 	Method string `yaml:"method,omitempty"`
 	// the content i.e. response
 	Content string `yaml:"content,omitempty"`
-	// the Marathon Version
-	Version string `yaml:"version,omitempty"`
+	// ContentSequence is a sequence of responses that are returned in order.
+	ContentSequence []indexedResponse `yaml:"contentSequence,omitempty"`
+	// the test scope
+	Scope string `yaml:"scope,omitempty"`
 }
 
 // serverConfig holds the Marathon server configuration
 type serverConfig struct {
-	// The version of Marathon
-	version string
 	// Username for basic auth
 	username string
 	// Password for basic auth
 	password string
 	// Token for authorization in case of DCOS environment
 	dcosToken string
+	// scope is an arbitrary test scope to distinguish fake responses from
+	// otherwise equal HTTP methods and query strings.
+	scope string
 }
 
 // configContainer holds both server and client Marathon configuration
@@ -81,8 +98,9 @@ type configContainer struct {
 type fakeServer struct {
 	io.Closer
 
-	eventSrv *eventsource.Server
-	httpSrv  *httptest.Server
+	eventSrv        *eventsource.Server
+	httpSrv         *httptest.Server
+	fakeRespIndices *responseIndices
 }
 
 type endpoint struct {
@@ -98,7 +116,10 @@ type fakeEvent struct {
 }
 
 func getTestURL(urlString string) string {
-	parsedURL, _ := url.Parse(urlString)
+	parsedURL, err := url.Parse(urlString)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse URL '%s': %s", urlString, err))
+	}
 	return fmt.Sprintf("%s://%s", parsedURL.Scheme, strings.Join([]string{parsedURL.Host, parsedURL.Host, parsedURL.Host}, ","))
 }
 
@@ -121,17 +142,30 @@ func newFakeMarathonEndpoint(t *testing.T, configs *configContainer) *endpoint {
 		configs.server = &serverConfig{}
 	}
 
+	fakeRespIndices := newResponseIndices()
+
 	// step: create the HTTP router
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v2/events", authMiddleware(configs.server, eventSrv.Handler("event")))
 	mux.HandleFunc("/", authMiddleware(configs.server, func(writer http.ResponseWriter, reader *http.Request) {
-		content, found := fakeResponses[fmt.Sprintf("%s:%s:%s", reader.Method, reader.RequestURI, configs.server.version)]
-		if !found {
-			http.Error(writer, `{"message": "not found"}`, 404)
-			return
+		respKey := fakeResponseMapKey(reader.Method, reader.RequestURI, configs.server.scope)
+		fakeRespIndices.Lock()
+		fakeRespIndex := fakeRespIndices.m[respKey]
+		fakeRespIndices.m[respKey]++
+		responses, found := fakeResponses[respKey]
+		fakeRespIndices.Unlock()
+		if found {
+			for _, response := range responses {
+				// Index < 0 indicates a static response.
+				if response.Index < 0 || response.Index == fakeRespIndex {
+					writer.Header().Add("Content-Type", "application/json")
+					writer.Write([]byte(response.Content))
+					return
+				}
+			}
 		}
-		writer.Header().Add("Content-Type", "application/json")
-		writer.Write([]byte(content))
+
+		http.Error(writer, `{"message": "not found"}`, 404)
 	}))
 
 	// step: create HTTP test server
@@ -149,8 +183,9 @@ func newFakeMarathonEndpoint(t *testing.T, configs *configContainer) *endpoint {
 
 	return &endpoint{
 		Server: fakeServer{
-			eventSrv: eventSrv,
-			httpSrv:  httpSrv,
+			eventSrv:        eventSrv,
+			httpSrv:         httpSrv,
+			fakeRespIndices: fakeRespIndices,
 		},
 		Client: client,
 		URL:    configs.client.URL,
@@ -223,23 +258,44 @@ func authMiddleware(server *serverConfig, next http.HandlerFunc) func(http.Respo
 // initFakeMarathonResponses reads in the marathon fake responses from the yaml file
 func initFakeMarathonResponses(t *testing.T) {
 	once.Do(func() {
-		fakeResponses = make(map[string]string, 0)
+		fakeResponses = make(map[string][]indexedResponse, 0)
 		var methods []*restMethod
 
-		// step: read in the content
-		contents, err := ioutil.ReadFile("./tests/rest-api/methods.yml")
+		// step: read in the test method specification
+		methodSpec, err := ioutil.ReadFile("./tests/rest-api/methods.yml")
 		if err != nil {
 			t.Fatalf("failed to read in the fake yaml responses")
 		}
 
-		err = yaml.Unmarshal([]byte(contents), &methods)
+		err = yaml.Unmarshal([]byte(methodSpec), &methods)
 		if err != nil {
 			t.Fatalf("failed to unmarshal the response")
 		}
 		for _, method := range methods {
-			fakeResponses[fmt.Sprintf("%s:%s:%s", method.Method, method.URI, method.Version)] = method.Content
+			key := fakeResponseMapKey(method.Method, method.URI, method.Scope)
+			switch {
+			case method.Content != "" && len(method.ContentSequence) > 0:
+				panic("content and contentSequence must not be provided simultaneously")
+			case len(method.ContentSequence) > 0:
+				fakeResponses[key] = method.ContentSequence
+			default:
+				// This combines the cases where static content was defined or not. The
+				// latter models an empty response (via an empty content) that should
+				// not result into a 404.
+				fakeResponses[key] = []indexedResponse{
+					indexedResponse{
+						// Index -1 indicates a static response.
+						Index:   -1,
+						Content: method.Content,
+					},
+				}
+			}
 		}
 	})
+}
+
+func fakeResponseMapKey(method, uri, scope string) string {
+	return fmt.Sprintf("%s:%s:%s", method, uri, scope)
 }
 
 func (t fakeEvent) Id() string {

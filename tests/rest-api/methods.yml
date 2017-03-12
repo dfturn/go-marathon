@@ -203,6 +203,31 @@
         }
     ]
     }
+- uri: /v2/apps?embed=apps.taskStats
+  method: GET
+  content: |
+    {
+    "apps": [
+        {
+            "taskStats": {
+                "startedAfterLastScaling": {
+                    "stats": {
+                        "counts": {
+                            "staged": 0,
+                            "running": 1,
+                            "healthy": 1,
+                            "unhealthy": 0
+                        },
+                        "lifeTime": {
+                            "averageSeconds": 17024.575,
+                            "medianSeconds": 17024.575
+                        }
+                    }
+                }
+            }
+        }
+    ]
+    }
 - uri: /v2/apps?cmd=nginx
   method: GET
   content: |
@@ -491,6 +516,18 @@
         "version": "2014-09-12T23:28:21.737Z"
     }
     }
+
+- uri: /v2/apps/fake-app
+  method: GET
+  scope: wait-on-app
+  contentSequence:
+    - index: 1
+      content: |
+        {
+        "app": {
+        }
+        }
+
 - uri: /v2/apps/fake-app-broken
   method: GET
   content: |
@@ -947,7 +984,7 @@
     ]
 - uri: /v2/deployments
   method: GET
-  version: 1.1.1
+  scope: v1.1.1
   content: |
     [
       {

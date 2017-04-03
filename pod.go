@@ -85,6 +85,11 @@ func (p *Pod) AddLabel(key, value string) *Pod {
 	return p
 }
 
+func (p *Pod) SetLabels(labels map[string]string) *Pod {
+	p.Labels = labels
+	return p
+}
+
 func (p *Pod) EmptyEnvironment() *Pod {
 	p.Environment = make(map[string]interface{})
 	return p
@@ -92,6 +97,13 @@ func (p *Pod) EmptyEnvironment() *Pod {
 
 func (p *Pod) AddEnvironment(name, value string) *Pod {
 	p.Environment[name] = value
+	return p
+}
+
+func (p *Pod) SetEnvironment(env map[string]string) *Pod {
+	for k, v := range env {
+		p.AddEnvironment(k, v)
+	}
 	return p
 }
 

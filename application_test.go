@@ -17,6 +17,7 @@ limitations under the License.
 package marathon
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
@@ -97,6 +98,20 @@ func TestApplicationCPU(t *testing.T) {
 	assert.Equal(t, 0.0, app.CPUs)
 	app.CPU(0.1)
 	assert.Equal(t, 0.1, app.CPUs)
+}
+
+func TestApplicationSetGPUs(t *testing.T) {
+	app := NewDockerApplication()
+	assert.Nil(t, app.GPUs)
+	app.SetGPUs(0.1)
+	assert.Equal(t, 0.1, *app.GPUs)
+}
+
+func TestApplicationEmptyGPUs(t *testing.T) {
+	app := NewDockerApplication()
+	assert.Nil(t, app.GPUs)
+	app.EmptyGPUs()
+	assert.Equal(t, 0.0, *app.GPUs)
 }
 
 func TestApplicationArgs(t *testing.T) {
@@ -297,6 +312,21 @@ func TestApplications(t *testing.T) {
 	assert.Equal(t, len(applications.Apps), 1)
 }
 
+func TestApplicationsEmbedTaskStats(t *testing.T) {
+	endpoint := newFakeMarathonEndpoint(t, nil)
+	defer endpoint.Close()
+
+	v := url.Values{}
+	v.Set("embed", "apps.taskStats")
+	applications, err := endpoint.Client.Applications(v)
+	assert.NoError(t, err)
+	assert.NotNil(t, applications)
+	assert.Equal(t, len(applications.Apps), 1)
+	assert.NotNil(t, applications.Apps[0].TaskStats)
+	assert.Equal(t, applications.Apps[0].TaskStats["startedAfterLastScaling"].Stats.Counts["healthy"], 1)
+	assert.Equal(t, applications.Apps[0].TaskStats["startedAfterLastScaling"].Stats.LifeTime["averageSeconds"], 17024.575)
+}
+
 func TestListApplications(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
@@ -488,29 +518,45 @@ func TestWaitOnApplication(t *testing.T) {
 	waitTime := 100 * time.Millisecond
 
 	tests := []struct {
-		desc    string
-		timeout time.Duration
-		appName string
+		desc          string
+		timeout       time.Duration
+		appName       string
+		testScope     string
+		shouldSucceed bool
 	}{
 		{
-			desc:    "existing app / timeout > ticker",
-			timeout: 200 * time.Millisecond,
-			appName: fakeAppName,
+			desc:          "initially existing app",
+			timeout:       0,
+			appName:       fakeAppName,
+			shouldSucceed: true,
+		},
+
+		{
+			desc:          "delayed existing app | timeout > ticker",
+			timeout:       200 * time.Millisecond,
+			appName:       fakeAppName,
+			testScope:     "wait-on-app",
+			shouldSucceed: true,
+		},
+
+		{
+			desc:          "delayed existing app | timeout < ticker",
+			timeout:       50 * time.Millisecond,
+			appName:       fakeAppName,
+			testScope:     "wait-on-app",
+			shouldSucceed: false,
 		},
 		{
-			desc:    "missing app / timeout > ticker",
-			timeout: 200 * time.Millisecond,
-			appName: "no_such_app",
+			desc:          "missing app | timeout > ticker",
+			timeout:       200 * time.Millisecond,
+			appName:       "no_such_app",
+			shouldSucceed: false,
 		},
 		{
-			desc:    "existing app / timeout < ticker",
-			timeout: 50 * time.Millisecond,
-			appName: fakeAppName,
-		},
-		{
-			desc:    "missing app / timeout < ticker",
-			timeout: 50 * time.Millisecond,
-			appName: "no_such_app",
+			desc:          "missing app | timeout < ticker",
+			timeout:       50 * time.Millisecond,
+			appName:       "no_such_app",
+			shouldSucceed: false,
 		},
 	}
 
@@ -519,21 +565,28 @@ func TestWaitOnApplication(t *testing.T) {
 		defaultConfig.PollingWaitTime = waitTime
 		configs := &configContainer{
 			client: &defaultConfig,
+			server: &serverConfig{
+				scope: test.testScope,
+			},
 		}
 
 		endpoint := newFakeMarathonEndpoint(t, configs)
 		defer endpoint.Close()
 
-		var err error
+		errCh := make(chan error)
 		go func() {
-			err = endpoint.Client.WaitOnApplication(test.appName, test.timeout)
+			errCh <- endpoint.Client.WaitOnApplication(test.appName, test.timeout)
 		}()
-		timer := time.NewTimer(400 * time.Millisecond)
-		<-timer.C
-		if test.appName == fakeAppName {
-			assert.NoError(t, err, test.desc)
-		} else {
-			assert.IsType(t, err, ErrTimeoutError, test.desc)
+
+		select {
+		case <-time.After(400 * time.Millisecond):
+			assert.Fail(t, fmt.Sprintf("%s: WaitOnApplication did not complete in time", test.desc))
+		case err := <-errCh:
+			if test.shouldSucceed {
+				assert.NoError(t, err, test.desc)
+			} else {
+				assert.IsType(t, err, ErrTimeoutError, test.desc)
+			}
 		}
 	}
 }
@@ -544,4 +597,71 @@ func TestAppExistAndRunning(t *testing.T) {
 	client := endpoint.Client.(*marathonClient)
 	assert.True(t, client.appExistAndRunning(fakeAppName))
 	assert.False(t, client.appExistAndRunning("no_such_app"))
+}
+
+func TestSetIPPerTask(t *testing.T) {
+	app := Application{}
+	app.Ports = append(app.Ports, 10)
+	app.AddPortDefinition(PortDefinition{})
+	assert.Nil(t, app.IPAddressPerTask)
+	assert.Equal(t, 1, len(app.Ports))
+	assert.Equal(t, 1, len(*app.PortDefinitions))
+
+	app.SetIPAddressPerTask(IPAddressPerTask{})
+	assert.NotNil(t, app.IPAddressPerTask)
+	assert.Equal(t, 0, len(app.Ports))
+	assert.Equal(t, 0, len(*app.PortDefinitions))
+}
+
+func TestIPAddressPerTask(t *testing.T) {
+	ipPerTask := IPAddressPerTask{}
+	assert.Nil(t, ipPerTask.Groups)
+	assert.Nil(t, ipPerTask.Labels)
+	assert.Nil(t, ipPerTask.Discovery)
+
+	ipPerTask.
+		AddGroup("label").
+		AddLabel("key", "value").
+		SetDiscovery(Discovery{})
+
+	assert.Equal(t, 1, len(*ipPerTask.Groups))
+	assert.Equal(t, "label", (*ipPerTask.Groups)[0])
+	assert.Equal(t, "value", (*ipPerTask.Labels)["key"])
+	assert.NotEmpty(t, ipPerTask.Discovery)
+
+	ipPerTask.EmptyGroups()
+	assert.Equal(t, 0, len(*ipPerTask.Groups))
+
+	ipPerTask.EmptyLabels()
+	assert.Equal(t, 0, len(*ipPerTask.Labels))
+
+}
+
+func TestIPAddressPerTaskDiscovery(t *testing.T) {
+	disc := Discovery{}
+	assert.Nil(t, disc.Ports)
+
+	disc.AddPort(Port{})
+	assert.NotNil(t, disc.Ports)
+	assert.Equal(t, 1, len(*disc.Ports))
+
+	disc.EmptyPorts()
+	assert.NotNil(t, disc.Ports)
+	assert.Equal(t, 0, len(*disc.Ports))
+
+}
+
+func TestUpgradeStrategy(t *testing.T) {
+	app := Application{}
+	assert.Nil(t, app.UpgradeStrategy)
+	app.SetUpgradeStrategy(UpgradeStrategy{}.SetMinimumHealthCapacity(1.0).SetMaximumOverCapacity(0.0))
+	us := app.UpgradeStrategy
+	assert.Equal(t, 1.0, *us.MinimumHealthCapacity)
+	assert.Equal(t, 0.0, *us.MaximumOverCapacity)
+
+	app.EmptyUpgradeStrategy()
+	us = app.UpgradeStrategy
+	assert.NotNil(t, us)
+	assert.Nil(t, us.MinimumHealthCapacity)
+	assert.Nil(t, us.MaximumOverCapacity)
 }

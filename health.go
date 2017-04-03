@@ -29,6 +29,31 @@ type HealthCheck struct {
 	TimeoutSeconds         int      `json:"timeoutSeconds,omitempty"`
 }
 
+type HTTPHealthCheck struct {
+	Endpoint string `json:"endpoint,omitempty"`
+	Path     string `json:"path,omitempty"`
+	Scheme   string `json:"scheme,omitempty"`
+}
+
+type TCPHealthCheck struct {
+	Endpoint string `json:"endpoint,omitempty"`
+}
+
+type CommandHealthCheck struct {
+	Command PodCommand `json:"command,omitempty"` // TODO: move this around
+}
+
+type PodHealthCheck struct {
+	HTTP                   *HTTPHealthCheck    `json:"http,omitempty"`
+	TCP                    *TCPHealthCheck     `json:"tcp,omitempty"`
+	Exec                   *CommandHealthCheck `json:"exec,omitempty"`
+	GracePeriodSeconds     int                 `json:"gracePeriodSeconds,omitempty"`
+	IntervalSeconds        int                 `json:"intervalSeconds,omitempty"`
+	MaxConsecutiveFailures int                 `json:"maxConsecutiveFailures,omitempty"`
+	TimeoutSeconds         int                 `json:"timeoutSeconds,omitempty"`
+	DelaySeconds           int                 `json:"delaySeconds,omitempty"`
+}
+
 // SetCommand sets the given command on the health check.
 func (h HealthCheck) SetCommand(c Command) HealthCheck {
 	h.Command = &c
@@ -82,6 +107,7 @@ type HealthCheckResult struct {
 	ConsecutiveFailures int    `json:"consecutiveFailures"`
 	FirstSuccess        string `json:"firstSuccess"`
 	LastFailure         string `json:"lastFailure"`
+	LastFailureCause    string `json:"lastFailureCause"`
 	LastSuccess         string `json:"lastSuccess"`
 	TaskID              string `json:"taskId"`
 }

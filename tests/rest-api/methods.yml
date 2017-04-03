@@ -203,6 +203,31 @@
         }
     ]
     }
+- uri: /v2/apps?embed=apps.taskStats
+  method: GET
+  content: |
+    {
+    "apps": [
+        {
+            "taskStats": {
+                "startedAfterLastScaling": {
+                    "stats": {
+                        "counts": {
+                            "staged": 0,
+                            "running": 1,
+                            "healthy": 1,
+                            "unhealthy": 0
+                        },
+                        "lifeTime": {
+                            "averageSeconds": 17024.575,
+                            "medianSeconds": 17024.575
+                        }
+                    }
+                }
+            }
+        }
+    ]
+    }
 - uri: /v2/apps?cmd=nginx
   method: GET
   content: |
@@ -491,6 +516,18 @@
         "version": "2014-09-12T23:28:21.737Z"
     }
     }
+
+- uri: /v2/apps/fake-app
+  method: GET
+  scope: wait-on-app
+  contentSequence:
+    - index: 1
+      content: |
+        {
+        "app": {
+        }
+        }
+
 - uri: /v2/apps/fake-app-broken
   method: GET
   content: |
@@ -629,6 +666,43 @@
     {
       "deploymentId": "83b215a6-4e26-4e44-9333-5c385eda6438",
       "version": "2014-08-26T07:37:50.462Z"
+    }
+- uri: /v2/pods
+  method: POST
+  content: |
+    {
+      "id": "/fake-pod",
+      "labels": {
+          "key": "value"
+      },
+      "version": "2014-08-18T22:36:41.451Z",
+      "user": "nobody",
+      "environment": {
+          "key": "value",
+          "key": {
+              "secret": "secret0"
+          }
+      },
+      "containers": [
+      ],
+      "secrets": {
+          "secret0": {
+              "source": "source0"
+          }
+      },
+      "volumes": [
+
+      ],
+      "networks": [
+
+      ],
+      "scaling": {
+          "kind": "fixed",
+          "instances": 1
+      },
+      "scheduling": {
+
+      }
     }
 - uri: /v2/groups
   method: GET
@@ -947,7 +1021,7 @@
     ]
 - uri: /v2/deployments
   method: GET
-  version: 1.1.1
+  scope: v1.1.1
   content: |
     [
       {

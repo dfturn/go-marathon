@@ -95,6 +95,13 @@ func (p *PodContainer) AddEnvironment(name, value string) *PodContainer {
 	return p
 }
 
+func (p *PodContainer) SetEnvironment(env map[string]string) *PodContainer {
+	for k, v := range env {
+		p.AddEnvironment(k, v)
+	}
+	return p
+}
+
 func (p *PodContainer) AddEnvironmentSecret(name, secretName string) *PodContainer {
 	p.Environment[name] = EnvironmentSecret{
 		Secret: secretName,

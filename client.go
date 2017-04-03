@@ -258,6 +258,8 @@ func (r *marathonClient) apiDelete(uri string, post, result interface{}) error {
 }
 
 func (r *marathonClient) apiCall(method, url string, body, result interface{}) error {
+	const deploymentHeader = "Marathon-Deployment-Id"
+
 	for {
 		// step: marshall the request to json
 		var requestBody []byte
@@ -274,6 +276,7 @@ func (r *marathonClient) apiCall(method, url string, body, result interface{}) e
 			return err
 		}
 		response, err := r.httpClient.Do(request)
+
 		if err != nil {
 			r.hosts.markDown(member)
 			// step: attempt the request on another member
@@ -300,6 +303,14 @@ func (r *marathonClient) apiCall(method, url string, body, result interface{}) e
 				if err := json.Unmarshal(respBody, result); err != nil {
 					r.debugLog.Printf("apiCall(): failed to unmarshall the response from marathon, error: %s\n", err)
 					return ErrInvalidResponse
+				}
+			} else {
+				deploymentID := response.Header.Get(deploymentHeader)
+				if deploymentID != "" {
+					d := DeploymentID{
+						DeploymentID: deploymentID,
+					}
+					result = d
 				}
 			}
 			return nil

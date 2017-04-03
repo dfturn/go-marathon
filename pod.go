@@ -23,18 +23,35 @@ import (
 
 // Pod is the definition for an pod in marathon
 type Pod struct {
-	Containers  []*PodContainer         `json:"containers,omitempty"`
-	Environment *map[string]interface{} `json:"environment,omitempty"`
-	ID          string                  `json:"id,omitempty"`
-	Labels      *map[string]string      `json:"labels,omitempty"`
-	Networks    []*PodNetwork           `json:"networks,omitempty"`
-	Scaling     *PodScalingPolicy       `json:"scaling,omitempty"`
-	Scheduling  *PodSchedulingPolicy    `json:"scheduling,omitempty"`
-	User        string                  `json:"user,omitempty"`
-	Version     string                  `json:"version,omitempty"`
-	Volumes     []*PodVolume            `json:"volumes,omitempty"`
+	ID                string                  `json:"id,omitempty"`
+	Labels            map[string]string       `json:"labels,omitempty"`
+	Version           string                  `json:"version,omitempty"`
+	User              string                  `json:"user,omitempty"`
+	Environment       map[string]interface{}  `json:"environment,omitempty"`
+	Containers        []*PodContainer         `json:"containers,omitempty"`
+	Secrets           map[string]SecretSource `json:"secrets,omitempty"`
+	Volumes           []*PodVolume            `json:"volumes,omitempty"`
+	Networks          []*PodNetwork           `json:"networks,omitempty"`
+	Scaling           *PodScalingPolicy       `json:"scaling,omitempty"`
+	Scheduling        *PodSchedulingPolicy    `json:"scheduling,omitempty"`
+	ExecutorResources *ExecutorResources      `json:"executorResources,omitempty"`
+}
 
-	Secrets *map[string]Secret `json:"secrets,omitempty"`
+type PodScalingPolicy struct {
+	Kind         string `json:"kind"`
+	Instances    int    `json:"instances"`
+	MaxInstances int    `json:"maxInstances,omitempty"`
+}
+
+func NewPod() *Pod {
+	return &Pod{
+		Labels:      map[string]string{},
+		Environment: map[string]interface{}{},
+		Containers:  []*PodContainer{},
+		Secrets:     map[string]SecretSource{},
+		Volumes:     []*PodVolume{},
+		Networks:    []*PodNetwork{},
+	}
 }
 
 func (p *Pod) String() string {
@@ -46,122 +63,120 @@ func (p *Pod) String() string {
 	return string(s)
 }
 
-type Secret struct {
-	Source string `json:"source"`
+// Name sets the name / ID of the pod i.e. the identifier for this pod
+func (p *Pod) Name(id string) *Pod {
+	p.ID = validateID(id)
+	return p
 }
 
-type PodContainerImage struct {
-	Kind      string `json:"kind"`
-	ID        string `json:"id"`
-	ForcePull bool   `json:"forcePull,omitempty"`
+// SetUser sets the user to run the pod as
+func (p *Pod) SetUser(user string) *Pod {
+	p.User = user
+	return p
 }
 
-type PodResources struct {
-	Cpus float64 `json:"cpus"`
-	Mem  int     `json:"mem"`
-	Disk int     `json:"disk"`
-	Gpus int     `json:"gpus,omitempty"`
+func (p *Pod) EmptyLabels() *Pod {
+	p.Labels = make(map[string]string)
+	return p
 }
 
-type PodHTTPEndpoint struct {
-	Endpoint string `json:"endpoint,omitempty"`
-	Path     string `json:"path,omitempty"`
-	Scheme   string `json:"scheme,omitempty"`
+func (p *Pod) AddLabel(key, value string) *Pod {
+	p.Labels[key] = value
+	return p
 }
 
-type PodHealthCheck struct {
-	HTTP                   *PodHTTPEndpoint `json:"http,omitempty"`
-	GracePeriodSeconds     int              `json:"gracePeriodSeconds,omitempty"`
-	IntervalSeconds        int              `json:"intervalSeconds,omitempty"`
-	MaxConsecutiveFailures int              `json:"maxConsecutiveFailures,omitempty"`
-	TimeoutSeconds         int              `json:"timeoutSeconds,omitempty"`
-	DelaySeconds           int              `json:"delaySeconds,omitempty"`
+func (p *Pod) EmptyEnvironment() *Pod {
+	p.Environment = make(map[string]interface{})
+	return p
 }
 
-type PodCommand struct {
-	Shell string `json:"shell,omitempty"`
-}
-type PodExec struct {
-	Command PodCommand `json:"command,omitempty"`
+func (p *Pod) AddEnvironment(name, value string) *Pod {
+	p.Environment[name] = value
+	return p
 }
 
-type PodEndpoints struct {
-	Name          string             `json:"name"`
-	ContainerPort int                `json:"containerPort"`
-	HostPort      int                `json:"hostPort"`
-	Protocol      []string           `json:"protocol"`
-	Labels        *map[string]string `json:"labels,omitempty"`
+func (p *Pod) GetEnvironmentVariable(name string) (string, error) {
+	str := ""
+	var err error
+
+	if val, ok := p.Environment[name]; ok {
+		switch val.(type) {
+		case string:
+			str = val.(string)
+			err = nil
+		case EnvironmentSecret:
+			err = fmt.Errorf("environment variable refers to a secret")
+		default:
+			err = fmt.Errorf("environment variable refers to unknown type")
+		}
+	} else {
+		err = fmt.Errorf("environment variable not found")
+	}
+	return str, err
 }
 
-type PodVolumeMounts struct {
-	Name      string `json:"name"`
-	MountPath string `json:"mountPath"`
+func (p *Pod) AddEnvironmentSecret(name, secretName string) *Pod {
+	p.Environment[name] = EnvironmentSecret{
+		Secret: secretName,
+	}
+	return p
 }
 
-type PodArtifact struct {
-	Uri        string `json:"uri"`
-	Extract    bool   `json:"extract,omitempty"`
-	Executable bool   `json:"executable,omitempty"`
-	Cache      bool   `json:"cache,omitempty"`
-	DestPath   string `json:"destPath,omitempty"`
+func (p *Pod) AddContainer(container *PodContainer) *Pod {
+	p.Containers = append(p.Containers, container)
+	return p
 }
 
-type PodContainer struct {
-	Name         string                  `json:"name"`
-	Exec         *PodExec                `json:"exec,omitempty"`
-	Resources    *PodResources           `json:"resources"`
-	Endpoints    []*PodEndpoints         `json:"endpoints,omitempty"`
-	Image        *PodContainerImage      `json:"image"`
-	Environment  *map[string]interface{} `json:"environment,omitempty"`
-	User         string                  `json:"user,omitempty"`
-	HealthCheck  *PodHealthCheck         `json:"healthCheck,omitempty"`
-	VolumeMounts []*PodVolumeMounts      `json:"volumeMounts,omitempty"`
-	Artifacts    []PodArtifact           `json:"artifacts,omitempty"`
-	Labels       *map[string]string      `json:"labels,omitempty"`
-	//Lifecycle interface{} `json:"lifecycle"`
+func (p *Pod) EmptySecrets() *Pod {
+	p.Secrets = make(map[string]SecretSource)
+	return p
 }
 
-type PodNetwork struct {
-	Name   string             `json:"name"`
-	Mode   string             `json:"mode"`
-	Labels *map[string]string `json:"labels"`
+func (p *Pod) GetSecretSource(name string) (string, error) {
+	if val, ok := p.Secrets[name]; ok {
+		return val.Source, nil
+	} else {
+		return "", fmt.Errorf("secret does not exist")
+	}
 }
 
-type PodScalingPolicy struct {
-	Kind         string `json:"kind"`
-	Instances    int    `json:"instances"`
-	MaxInstances int    `json:"maxInstances,omitempty"`
+func (p *Pod) AddSecret(name, value string) *Pod {
+	p.Secrets[name] = SecretSource{
+		Source: value,
+	}
+	return p
 }
 
-type PodBackoff struct {
-	Backoff        int     `json:"backoff"`
-	BackoffFactor  float64 `json:"backoffFactor"`
-	MaxLaunchDelay int     `json:"maxLaunchDelay"`
+func (p *Pod) AddVolume(vol *PodVolume) *Pod {
+	p.Volumes = append(p.Volumes, vol)
+	return p
 }
 
-type PodUpgrade struct {
-	MinimumHealthCapacity int `json:"minimumHealthCapacity"`
-	MaximumOverCapacity   int `json:"maximumOverCapacity"`
+func (p *Pod) AddNetwork(net *PodNetwork) *Pod {
+	p.Networks = append(p.Networks, net)
+	return p
 }
 
-type PodPlacement struct {
-	Constraints           *[][]string `json:"constraints"`
-	AcceptedResourceRoles []string    `json:"acceptedResourceRoles"`
+func (p *Pod) Count(count int) *Pod {
+	p.Scaling = &PodScalingPolicy{
+		Kind:      "fixed",
+		Instances: count,
+	}
+	return p
 }
 
-type PodSchedulingPolicy struct {
-	Backoff   *PodBackoff   `json:"backoff,omitempty"`
-	Upgrade   *PodUpgrade   `json:"upgrade,omitempty"`
-	Placement *PodPlacement `json:"placement,omitempty"`
+func (p *Pod) SetPodSchedulingPolicy(policy *PodSchedulingPolicy) *Pod {
+	p.Scheduling = policy
+	return p
 }
 
-type PodVolume struct {
-	Name string `json:"name"`
-	Host string `json:"host"`
+func (p *Pod) SetExecutorResources(resources *ExecutorResources) *Pod {
+	p.ExecutorResources = resources
+	return p
 }
 
-// CreatePod creates a new application in Marathon
-// 		application:		the structure holding the application configuration
+// CreatePod creates a new pod in Marathon
+// 		application:		the structure holding the pod configuration
 func (r *marathonClient) CreatePod(pod *Pod) (*Pod, error) {
 	result := new(Pod)
 	if err := r.apiPost(marathonAPIPods, &pod, result); err != nil {
@@ -171,12 +186,12 @@ func (r *marathonClient) CreatePod(pod *Pod) (*Pod, error) {
 	return result, nil
 }
 
-// DeleteApplication deletes an application from marathon
-// 		name: 		the id used to identify the application
+// DeletePod deletes a pod from marathon
+// 		name: 		the id used to identify the pod
 //		force:		used to force the delete operation in case of blocked deployment
 func (r *marathonClient) DeletePod(name string) (*DeploymentID, error) {
 	uri := buildPodURI(name)
-	// step: check of the application already exists
+	// step: check of the pod already exists
 	deployID := new(DeploymentID)
 	if err := r.apiDelete(uri, nil, deployID); err != nil {
 		return nil, nil // TODO: Get headers and get the deployment ID
@@ -188,3 +203,5 @@ func (r *marathonClient) DeletePod(name string) (*DeploymentID, error) {
 func buildPodURI(path string) string {
 	return fmt.Sprintf("%s/%s", marathonAPIPods, trimRootPath(path))
 }
+
+// TODO: Add other APIs

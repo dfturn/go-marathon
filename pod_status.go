@@ -14,77 +14,32 @@ const (
 )
 
 type PodStatus struct {
-	ID                 string                   `json:"id"`
-	Instances          []*PodInstanceStatus     `json:"instances"`
-	LastChanged        string                   `json:"lastChanged"`
-	LastUpdated        string                   `json:"lastUpdated"`
-	Message            string                   `json:"message"`
-	Spec               *Pod                     `json:"spec"`
-	Status             PodState                 `json:"status"`
-	StatusSince        string                   `json:"statusSince"`
-	TerminationHistory []*PodTerminationHistory `json:"terminationHistory"`
+	ID                 string                   `json:"id,omitempty"`
+	Spec               *Pod                     `json:"spec,omitempty"`
+	Status             PodState                 `json:"status,omitempty"`
+	StatusSince        string                   `json:"statusSince,omitempty"`
+	Message            string                   `json:"message,omitempty"`
+	Instances          []*PodInstanceStatus     `json:"instances,omitempty"`
+	TerminationHistory []*PodTerminationHistory `json:"terminationHistory,omitempty"`
+	LastUpdated        string                   `json:"lastUpdated,omitempty"`
+	LastChanged        string                   `json:"lastChanged,omitempty"`
 }
 
 type PodTerminationHistory struct {
-	InstanceId   string                         `json:"instanceId"`
-	StartedAt    string                         `json:"startedAt"` // TODO time
-	TerminatedAt string                         `json:"terminatedAt"`
-	Message      string                         `json:"message"`
-	Containers   []*ContainerTerminationHistory `json:"containers"`
+	InstanceId   string                         `json:"instanceId,omitempty"`
+	StartedAt    string                         `json:"startedAt,omitempty"`
+	TerminatedAt string                         `json:"terminatedAt,omitempty"`
+	Message      string                         `json:"message,omitempty"`
+	Containers   []*ContainerTerminationHistory `json:"containers,omitempty"`
 }
 
 type ContainerTerminationHistory struct {
-	ContainerId    string                     `json:"containerId"`
-	LastKnownState string                     `json:"lastKnownState"`
-	Termination    *ContainerTerminationState `json:"termination"`
+	ContainerId    string                     `json:"containerId,omitempty"`
+	LastKnownState string                     `json:"lastKnownState,omitempty"`
+	Termination    *ContainerTerminationState `json:"termination,omitempty"`
 }
 
-type StatusCondition struct {
-	Name        string `json:"name"`
-	Value       string `json:"value"`
-	Reason      string `json:"reason,omitempty"`
-	LastChanged string `json:"lastChanged"` // TODO: datetime
-	LastUpdated string `json:"lastUpdated"` // TODO: datetime
-}
-
-type ContainerTerminationState struct {
-	ExitCode int    `json:"exitCode,omitempty"`
-	Message  string `json:"message,omitempty"`
-}
-
-type ContainerStatus struct {
-	Conditions  []*StatusCondition         `json:"conditions"`
-	ContainerID string                     `json:"containerId"`
-	Endpoints   []interface{}              `json:"endpoints"` // TODO
-	LastChanged string                     `json:"lastChanged"`
-	LastUpdated string                     `json:"lastUpdated"`
-	Message     string                     `json:"message"`
-	Name        string                     `json:"name"`
-	Resources   *PodResources              `json:"resources"`
-	Status      string                     `json:"status"`
-	StatusSince string                     `json:"statusSince"`
-	Termination *ContainerTerminationState `json:"termination,omitempty"`
-}
-
-type PodNetworkStatus struct {
-	Addresses []string `json:"addresses"`
-	Name      string   `json:"name"`
-}
-
-type PodInstanceStatus struct {
-	AgentHostname string              `json:"agentHostname"`
-	Conditions    []*StatusCondition  `json:"conditions"`
-	Containers    []*ContainerStatus  `json:"containers"`
-	ID            string              `json:"id"`
-	LastChanged   string              `json:"lastChanged"`
-	LastUpdated   string              `json:"lastUpdated"`
-	Message       string              `json:"message"`
-	Networks      []*PodNetworkStatus `json:"networks"`
-	Resources     *PodResources       `json:"resources"`
-	SpecReference string              `json:"specReference"`
-	Status        string              `json:"status"` // TODO: This should be an enum (TASK_RUNNING etc)
-	StatusSince   string              `json:"statusSince"`
-}
+// TODO: Add helper functions for anything that makes sense?
 
 // Application retrieves the application configuration from marathon
 // 		name: 		the id used to identify the application

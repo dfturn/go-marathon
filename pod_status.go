@@ -61,7 +61,7 @@ func buildPodStatusURI(path string) string {
 //		name:		the id of the pod
 //		timeout:	a duration of time to wait for an pod to deploy
 func (r *marathonClient) WaitOnPod(name string, timeout time.Duration) error {
-	if r.podExistAndRunning(name) {
+	if r.PodExistsAndRunning(name) {
 		return nil
 	}
 
@@ -74,14 +74,14 @@ func (r *marathonClient) WaitOnPod(name string, timeout time.Duration) error {
 		case <-timeoutTimer:
 			return ErrTimeoutError
 		case <-ticker.C:
-			if r.podExistAndRunning(name) {
+			if r.PodExistsAndRunning(name) {
 				return nil
 			}
 		}
 	}
 }
 
-func (r *marathonClient) podExistAndRunning(name string) bool {
+func (r *marathonClient) PodExistsAndRunning(name string) bool {
 	podStatus, err := r.GetPodStatus(name)
 	if apiErr, ok := err.(*APIError); ok && apiErr.ErrCode == ErrCodeNotFound {
 		return false

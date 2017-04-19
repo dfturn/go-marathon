@@ -200,7 +200,6 @@ func (r *marathonClient) CreatePod(pod *Pod) (*Pod, error) {
 
 // DeletePod deletes a pod from marathon
 // 		name: 		the id used to identify the pod
-//		force:		used to force the delete operation in case of blocked deployment
 func (r *marathonClient) DeletePod(name string) (*DeploymentID, error) {
 	uri := buildPodURI(name)
 	// step: check of the pod already exists
@@ -210,6 +209,19 @@ func (r *marathonClient) DeletePod(name string) (*DeploymentID, error) {
 	}
 
 	return deployID, nil
+}
+
+// CreatePod creates a new pod in Marathon
+// 		application:		the structure holding the pod configuration
+func (r *marathonClient) UpdatePod(pod *Pod) (*Pod, error) {
+	uri := buildPodURI(pod.ID)
+	result := new(Pod)
+	// step: check of the pod already exists
+	if err := r.apiPut(uri, nil, result); err != nil {
+		return nil, nil // TODO: Get headers and get the deployment ID
+	}
+
+	return result, nil
 }
 
 func buildPodURI(path string) string {

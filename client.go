@@ -74,10 +74,14 @@ type Marathon interface {
 	GetPodStatus(name string) (*PodStatus, error)
 	// create pod
 	CreatePod(pod *Pod) (*Pod, error)
+	// update pod
+	UpdatePod(pod *Pod) (*DeploymentID, error)
 	// delete pod
 	DeletePod(name string) (*DeploymentID, error)
 	// wait on pod to deploy
 	WaitOnPod(name string, timeout time.Duration) error
+	// pod is running
+	PodExistsAndRunning(name string) bool
 
 	// -- TASKS ---
 

@@ -217,7 +217,7 @@ func (r *marathonClient) UpdatePod(pod *Pod) (*Pod, error) {
 	uri := buildPodURI(pod.ID)
 	result := new(Pod)
 	// step: check of the pod already exists
-	if err := r.apiPut(uri, nil, result); err != nil {
+	if err := r.apiPut(uri, pod, result); err != nil {
 		return nil, nil // TODO: Get headers and get the deployment ID
 	}
 

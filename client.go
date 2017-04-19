@@ -75,7 +75,7 @@ type Marathon interface {
 	// create pod
 	CreatePod(pod *Pod) (*Pod, error)
 	// update pod
-	UpdatePod(pod *Pod) (*DeploymentID, error)
+	UpdatePod(pod *Pod) (*Pod, error)
 	// delete pod
 	DeletePod(name string) (*DeploymentID, error)
 	// wait on pod to deploy

@@ -13,7 +13,7 @@ type PodUpgrade struct {
 
 type PodPlacement struct {
 	Constraints           *[][]string `json:"constraints"`
-	AcceptedResourceRoles []string    `json:"acceptedResourceRoles"`
+	AcceptedResourceRoles []string    `json:"acceptedResourceRoles,omitempty"`
 }
 
 type PodSchedulingPolicy struct {

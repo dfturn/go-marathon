@@ -12,7 +12,7 @@ type PodContainer struct {
 	VolumeMounts []*PodVolumeMount      `json:"volumeMounts,omitempty"`
 	Artifacts    []*PodArtifact         `json:"artifacts,omitempty"`
 	Labels       map[string]string      `json:"labels,omitempty"`
-	Lifecycle    PodLifecycle           `json:"lifecycle"`
+	Lifecycle    PodLifecycle           `json:"lifecycle,omitempty"`
 }
 
 type PodLifecycle struct {

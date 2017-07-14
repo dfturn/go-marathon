@@ -136,7 +136,6 @@ func newFakeMarathonEndpoint(t *testing.T, configs *configContainer) *endpoint {
 
 	// step: fill in the default if required
 	defaultConfig := NewDefaultConfig()
-	defaultConfig.LogOutput = os.Stdout // TODO remove
 	if configs == nil {
 		configs = &configContainer{}
 	}

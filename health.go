@@ -27,22 +27,27 @@ type HealthCheck struct {
 	GracePeriodSeconds     int      `json:"gracePeriodSeconds,omitempty"`
 	IntervalSeconds        int      `json:"intervalSeconds,omitempty"`
 	TimeoutSeconds         int      `json:"timeoutSeconds,omitempty"`
+	IgnoreHTTP1xx          *bool    `json:"ignoreHttp1xx,omitempty"`
 }
 
+// HTTPHealthCheck describes an HTTP based health check
 type HTTPHealthCheck struct {
 	Endpoint string `json:"endpoint,omitempty"`
 	Path     string `json:"path,omitempty"`
 	Scheme   string `json:"scheme,omitempty"`
 }
 
+// TCPHealthCheck describes a TCP based health check
 type TCPHealthCheck struct {
 	Endpoint string `json:"endpoint,omitempty"`
 }
 
+// CommandHealthCheck describes a shell-based health check
 type CommandHealthCheck struct {
-	Command PodCommand `json:"command,omitempty"` // TODO: move this around
+	Command PodCommand `json:"command,omitempty"`
 }
 
+// PodHealthCheck describes how to determine a pod's health
 type PodHealthCheck struct {
 	HTTP                   *HTTPHealthCheck    `json:"http,omitempty"`
 	TCP                    *TCPHealthCheck     `json:"tcp,omitempty"`
@@ -81,6 +86,12 @@ func (h HealthCheck) SetPath(p string) HealthCheck {
 // SetMaxConsecutiveFailures sets the maximum consecutive failures on the health check.
 func (h HealthCheck) SetMaxConsecutiveFailures(i int) HealthCheck {
 	h.MaxConsecutiveFailures = &i
+	return h
+}
+
+// SetIgnoreHTTP1xx sets ignore http 1xx on the health check.
+func (h HealthCheck) SetIgnoreHTTP1xx(ignore bool) HealthCheck {
+	h.IgnoreHTTP1xx = &ignore
 	return h
 }
 

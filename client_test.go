@@ -39,6 +39,14 @@ func TestNewClient(t *testing.T) {
 	assert.Equal(t, conf.PollingWaitTime, defaultPollingWaitTime)
 }
 
+func TestInvalidConfig(t *testing.T) {
+	config := Config{
+		URL: "",
+	}
+	_, err := NewClient(config)
+	assert.Error(t, err)
+}
+
 func TestPing(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
@@ -121,6 +129,56 @@ func TestAPIRequest(t *testing.T) {
 		}
 		if !x.Ok && err == nil {
 			t.Errorf("case %d, expected to received an error", i)
+		}
+
+		endpoint.Close()
+	}
+}
+
+func TestBuildApiRequestFailure(t *testing.T) {
+	tests := []struct {
+		name              string
+		expectedError     error
+		expectedErrorType interface{}
+		path              string
+		clusterDown       bool
+	}{
+		{
+			name:          "cluster down",
+			expectedError: ErrMarathonDown,
+			clusterDown:   true,
+		},
+		{
+			name:              "invalid request parameter",
+			expectedErrorType: newRequestError{},
+			path:              "%zzzzz",
+		},
+	}
+
+	for _, test := range tests {
+		if test.expectedError == nil && test.expectedErrorType == nil {
+			panic("Testcase requires at least one of 'expectedError' or 'expectedErrorType'")
+		}
+
+		clientCfg := NewDefaultConfig()
+		config := configContainer{client: &clientCfg}
+		endpoint := newFakeMarathonEndpoint(t, &config)
+
+		client := endpoint.Client.(*marathonClient)
+
+		if test.clusterDown {
+			for _, member := range client.hosts.members {
+				member.status = memberStatusDown
+			}
+		}
+
+		_, _, err := client.buildAPIRequest("GET", test.path, nil)
+
+		if test.expectedError != nil {
+			assert.Equal(t, test.expectedError, err)
+		}
+		if test.expectedErrorType != nil {
+			assert.IsType(t, test.expectedErrorType, err)
 		}
 
 		endpoint.Close()

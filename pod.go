@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Rohith All rights reserved.
+Copyright 2017 Devin All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,12 +37,14 @@ type Pod struct {
 	ExecutorResources *ExecutorResources      `json:"executorResources,omitempty"`
 }
 
+// PodScalingPolicy is the scaling policy of the pod
 type PodScalingPolicy struct {
 	Kind         string `json:"kind"`
 	Instances    int    `json:"instances"`
 	MaxInstances int    `json:"maxInstances,omitempty"`
 }
 
+// NewPod create an empty pod
 func NewPod() *Pod {
 	return &Pod{
 		Labels:      map[string]string{},
@@ -54,6 +56,7 @@ func NewPod() *Pod {
 	}
 }
 
+// String marshals the pod as an indented string
 func (p *Pod) String() string {
 	s, err := json.MarshalIndent(p, "", "  ")
 	if err != nil {
@@ -75,38 +78,45 @@ func (p *Pod) SetUser(user string) *Pod {
 	return p
 }
 
+// EmptyLabels empties the labels in a pod
 func (p *Pod) EmptyLabels() *Pod {
 	p.Labels = make(map[string]string)
 	return p
 }
 
+// AddLabel adds a label to a pod
 func (p *Pod) AddLabel(key, value string) *Pod {
 	p.Labels[key] = value
 	return p
 }
 
+// SetLabels sets the labels for a pod
 func (p *Pod) SetLabels(labels map[string]string) *Pod {
 	p.Labels = labels
 	return p
 }
 
+// EmptyEnvironment empties the environment variables for a pod
 func (p *Pod) EmptyEnvironment() *Pod {
 	p.Environment = make(map[string]interface{})
 	return p
 }
 
+// AddEnvironment adds an environment variable to a pod
 func (p *Pod) AddEnvironment(name, value string) *Pod {
 	p.Environment[name] = value
 	return p
 }
 
-func (p *Pod) SetEnvironment(env map[string]string) *Pod {
+// ExtendEnvironment extends the environment with the new environment variables
+func (p *Pod) ExtendEnvironment(env map[string]string) *Pod {
 	for k, v := range env {
 		p.AddEnvironment(k, v)
 	}
 	return p
 }
 
+// GetEnvironmentVariable gets the string contained in an environment variable
 func (p *Pod) GetEnvironmentVariable(name string) (string, error) {
 	str := ""
 	var err error
@@ -127,6 +137,7 @@ func (p *Pod) GetEnvironmentVariable(name string) (string, error) {
 	return str, err
 }
 
+// AddEnvironmentSecret adds a secret to a pod
 func (p *Pod) AddEnvironmentSecret(name, secretName string) *Pod {
 	p.Environment[name] = EnvironmentSecret{
 		Secret: secretName,
@@ -134,24 +145,27 @@ func (p *Pod) AddEnvironmentSecret(name, secretName string) *Pod {
 	return p
 }
 
+// AddContainer adds a container to a pod
 func (p *Pod) AddContainer(container *PodContainer) *Pod {
 	p.Containers = append(p.Containers, container)
 	return p
 }
 
+// EmptySecrets empties the secret sources in a pod
 func (p *Pod) EmptySecrets() *Pod {
 	p.Secrets = make(map[string]SecretSource)
 	return p
 }
 
+// GetSecretSource gets the source of the named secret
 func (p *Pod) GetSecretSource(name string) (string, error) {
 	if val, ok := p.Secrets[name]; ok {
 		return val.Source, nil
-	} else {
-		return "", fmt.Errorf("secret does not exist")
 	}
+	return "", fmt.Errorf("secret does not exist")
 }
 
+// AddSecret adds a secret source to a pod
 func (p *Pod) AddSecret(name, value string) *Pod {
 	p.Secrets[name] = SecretSource{
 		Source: value,
@@ -159,16 +173,19 @@ func (p *Pod) AddSecret(name, value string) *Pod {
 	return p
 }
 
+// AddVolume adds a volume to a pod
 func (p *Pod) AddVolume(vol *PodVolume) *Pod {
 	p.Volumes = append(p.Volumes, vol)
 	return p
 }
 
+// AddNetwork adds a PodNetwork to a pod
 func (p *Pod) AddNetwork(net *PodNetwork) *Pod {
 	p.Networks = append(p.Networks, net)
 	return p
 }
 
+// Count sets the count of the pod
 func (p *Pod) Count(count int) *Pod {
 	p.Scaling = &PodScalingPolicy{
 		Kind:      "fixed",
@@ -177,18 +194,52 @@ func (p *Pod) Count(count int) *Pod {
 	return p
 }
 
+// SetPodSchedulingPolicy sets the PodSchedulingPolicy of a pod
 func (p *Pod) SetPodSchedulingPolicy(policy *PodSchedulingPolicy) *Pod {
 	p.Scheduling = policy
 	return p
 }
 
+// SetExecutorResources sets the resources for the pod executor
 func (p *Pod) SetExecutorResources(resources *ExecutorResources) *Pod {
 	p.ExecutorResources = resources
 	return p
 }
 
+// SupportsPods determines if this version of marathon supports pods
+// If HEAD returns 200 it does
+func (r *marathonClient) SupportsPods() bool {
+	if err := r.apiHead(marathonAPIPods, nil, nil); err != nil {
+		return false
+	}
+
+	return true
+}
+
+// GetPod gets a pod from marathon
+// 		name: 		the id used to identify the pod
+func (r *marathonClient) GetPod(name string) (*Pod, error) {
+	uri := buildPodURI(name)
+	result := new(Pod)
+	if err := r.apiGet(uri, nil, result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// GetAllPods gets all pods from marathon
+func (r *marathonClient) GetAllPods() ([]*Pod, error) {
+	var result []*Pod
+	if err := r.apiGet(marathonAPIPods, nil, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 // CreatePod creates a new pod in Marathon
-// 		application:		the structure holding the pod configuration
+// 		pod:		the structure holding the pod configuration
 func (r *marathonClient) CreatePod(pod *Pod) (*Pod, error) {
 	result := new(Pod)
 	if err := r.apiPost(marathonAPIPods, &pod, result); err != nil {
@@ -200,32 +251,60 @@ func (r *marathonClient) CreatePod(pod *Pod) (*Pod, error) {
 
 // DeletePod deletes a pod from marathon
 // 		name: 		the id used to identify the pod
-func (r *marathonClient) DeletePod(name string) (*DeploymentID, error) {
-	uri := buildPodURI(name)
+// 		force: 		whether
+func (r *marathonClient) DeletePod(name string, force bool) (*DeploymentID, error) {
+	uri := fmt.Sprintf("%s?force=%v", buildPodURI(name), force)
 	// step: check of the pod already exists
 	deployID := new(DeploymentID)
 	if err := r.apiDelete(uri, nil, deployID); err != nil {
-		return nil, nil // TODO: Get headers and get the deployment ID
+		return nil, err
 	}
 
 	return deployID, nil
 }
 
 // CreatePod creates a new pod in Marathon
-// 		application:		the structure holding the pod configuration
-func (r *marathonClient) UpdatePod(pod *Pod) (*Pod, error) {
-	uri := buildPodURI(pod.ID)
+// 		pod:		the structure holding the pod configuration
+func (r *marathonClient) UpdatePod(pod *Pod, force bool) (*Pod, error) {
+	uri := fmt.Sprintf("%s?force=%v", buildPodURI(pod.ID), force)
 	result := new(Pod)
 	// step: check of the pod already exists
 	if err := r.apiPut(uri, pod, result); err != nil {
-		return nil, nil // TODO: Get headers and get the deployment ID
+		return nil, err
 	}
 
 	return result, nil
 }
 
+// GetVersions gets the versions of a pod
+// 		name:		the id of the pod
+func (r *marathonClient) GetVersions(name string) ([]string, error) {
+	uri := buildPodVersionURI(name)
+	var result []string
+	if err := r.apiGet(uri, nil, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// GetPodByVersion gets a pod by a version
+// 		name:		the id of the pod
+// 		version:	the version of the pod
+func (r *marathonClient) GetPodByVersion(name, version string) (*Pod, error) {
+	uri := fmt.Sprintf("%s/%s", buildPodVersionURI(name), version)
+	result := new(Pod)
+	if err := r.apiGet(uri, nil, result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func buildPodVersionURI(name string) string {
+	return fmt.Sprintf("%s/%s::versions", marathonAPIPods, trimRootPath(name))
+}
+
 func buildPodURI(path string) string {
 	return fmt.Sprintf("%s/%s", marathonAPIPods, trimRootPath(path))
 }
-
-// TODO: Add other APIs

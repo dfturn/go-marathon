@@ -1,58 +1,116 @@
+/*
+Copyright 2017 Devin All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package marathon
 
-type PodInstanceState string
-
-const (
-	PodInstanceStatePending  PodInstanceState = "PENDING"
-	PodInstanceStateStaging  PodInstanceState = "STAGING"
-	PodInstanceStateStable   PodInstanceState = "STABLE"
-	PodInstanceStateDegraded PodInstanceState = "DEGRADED"
-	PodInstanceStateTerminal PodInstanceState = "TERMINAL"
+import (
+	"encoding/json"
+	"fmt"
+	"time"
 )
 
-type PodInstanceStatus struct {
-	AgentHostname string              `json:"agentHostname,omitempty"`
-	Conditions    []*StatusCondition  `json:"conditions,omitempty"`
-	Containers    []*ContainerStatus  `json:"containers,omitempty"`
-	ID            string              `json:"id,omitempty"`
-	LastChanged   string              `json:"lastChanged,omitempty"`
-	LastUpdated   string              `json:"lastUpdated,omitempty"`
-	Message       string              `json:"message,omitempty"`
-	Networks      []*PodNetworkStatus `json:"networks,omitempty"`
-	Resources     *Resources          `json:"resources,omitempty"`
-	SpecReference string              `json:"specReference,omitempty"`
-	Status        PodInstanceState    `json:"status,omitempty"`
-	StatusSince   string              `json:"statusSince,omitempty"`
+// PodInstance is the representation of an instance as returned by deleting an instance
+type PodInstance struct {
+	InstanceID          PodInstanceID              `json:"instanceId"`
+	AgentInfo           PodAgentInfo               `json:"agentInfo"`
+	TasksMap            map[string]PodTask         `json:"tasksMap"`
+	RunSpecVersion      time.Time                  `json:"runSpecVersion"`
+	State               PodInstanceStateHistory    `json:"state"`
+	UnreachableStrategy EnabledUnreachableStrategy `json:"unreachableStrategy"`
 }
 
-type PodNetworkStatus struct {
-	Addresses []string `json:"addresses,omitempty"`
-	Name      string   `json:"name,omitempty"`
+// PodInstanceStateHistory is the pod instance's state
+type PodInstanceStateHistory struct {
+	Condition   PodTaskCondition `json:"condition"`
+	Since       time.Time        `json:"since"`
+	ActiveSince time.Time        `json:"activeSince"`
 }
 
-type StatusCondition struct {
-	Name        string `json:"name,omitempty"`
-	Value       string `json:"value,omitempty"`
-	Reason      string `json:"reason,omitempty"`
-	LastChanged string `json:"lastChanged,omitempty"`
-	LastUpdated string `json:"lastUpdated,omitempty"`
+// PodInstanceID contains the instance ID
+type PodInstanceID struct {
+	ID string `json:"idString"`
 }
 
-type ContainerStatus struct {
-	Conditions  []*StatusCondition         `json:"conditions,omitempty"`
-	ContainerID string                     `json:"containerId,omitempty"`
-	Endpoints   []*PodEndpoint             `json:"endpoints,omitempty"`
-	LastChanged string                     `json:"lastChanged,omitempty"`
-	LastUpdated string                     `json:"lastUpdated,omitempty"`
-	Message     string                     `json:"message,omitempty"`
-	Name        string                     `json:"name,omitempty"`
-	Resources   *Resources                 `json:"resources,omitempty"`
-	Status      string                     `json:"status,omitempty"`
-	StatusSince string                     `json:"statusSince,omitempty"`
-	Termination *ContainerTerminationState `json:"termination,omitempty"`
+// PodAgentInfo contains info about the agent the instance is running on
+type PodAgentInfo struct {
+	Host       string   `json:"host"`
+	AgentID    string   `json:"agentId"`
+	Attributes []string `json:"attributes"`
 }
 
-type ContainerTerminationState struct {
-	ExitCode int    `json:"exitCode,omitempty"`
-	Message  string `json:"message,omitempty"`
+// PodTask contains the info about the specific task within the instance
+type PodTask struct {
+	TaskID         string        `json:"taskId"`
+	RunSpecVersion time.Time     `json:"runSpecVersion"`
+	Status         PodTaskStatus `json:"status"`
+}
+
+// PodTaskStatus is the current status of the task
+type PodTaskStatus struct {
+	StagedAt    time.Time        `json:"stagedAt"`
+	StartedAt   time.Time        `json:"startedAt"`
+	MesosStatus string           `json:"mesosStatus"`
+	Condition   PodTaskCondition `json:"condition"`
+	NetworkInfo PodNetworkInfo   `json:"networkInfo"`
+}
+
+// PodTaskCondition contains a string representation of the condition
+type PodTaskCondition struct {
+	Str string `json:"str"`
+}
+
+// PodNetworkInfo contains the network info for a task
+type PodNetworkInfo struct {
+	HostName    string      `json:"hostName"`
+	HostPorts   []int       `json:"hostPorts"`
+	IPAddresses []IPAddress `json:"ipAddresses"`
+}
+
+// String marshals the pod as an indented string
+func (p *PodInstance) String() string {
+	s, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		return fmt.Sprintf(`{"error": "error decoding type into json: %s"}`, err)
+	}
+
+	return string(s)
+}
+
+// DeletePodInstances deletes all instances of the named pod
+func (r *marathonClient) DeletePodInstances(name string, instances []string) ([]*PodInstance, error) {
+	uri := buildPodInstancesURI(name)
+	var result []*PodInstance
+	if err := r.apiDelete(uri, instances, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// DeletePodInstance deletes a specific instance of a pod
+func (r *marathonClient) DeletePodInstance(name, instance string) (*PodInstance, error) {
+	uri := fmt.Sprintf("%s/%s", buildPodInstancesURI(name), instance)
+	result := new(PodInstance)
+	if err := r.apiDelete(uri, nil, result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func buildPodInstancesURI(path string) string {
+	return fmt.Sprintf("%s/%s::instances", marathonAPIPods, trimRootPath(path))
 }

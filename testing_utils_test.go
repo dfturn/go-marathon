@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -49,8 +50,9 @@ var (
 )
 
 type indexedResponse struct {
-	Index   int    `yaml:"index,omitempty"`
-	Content string `yaml:"content,omitempty"`
+	Index   int               `yaml:"index,omitempty"`
+	Content string            `yaml:"content,omitempty"`
+	Headers map[string]string `yaml:"headers,omitempty"`
 }
 
 type responseIndices struct {
@@ -74,6 +76,8 @@ type restMethod struct {
 	ContentSequence []indexedResponse `yaml:"contentSequence,omitempty"`
 	// the test scope
 	Scope string `yaml:"scope,omitempty"`
+	// headers in the response
+	Headers map[string]string `yaml:"headers,omitempty"`
 }
 
 // serverConfig holds the Marathon server configuration
@@ -132,6 +136,7 @@ func newFakeMarathonEndpoint(t *testing.T, configs *configContainer) *endpoint {
 
 	// step: fill in the default if required
 	defaultConfig := NewDefaultConfig()
+	defaultConfig.LogOutput = os.Stdout // TODO remove
 	if configs == nil {
 		configs = &configContainer{}
 	}
@@ -159,6 +164,10 @@ func newFakeMarathonEndpoint(t *testing.T, configs *configContainer) *endpoint {
 				// Index < 0 indicates a static response.
 				if response.Index < 0 || response.Index == fakeRespIndex {
 					writer.Header().Add("Content-Type", "application/json")
+					for k, v := range response.Headers {
+						writer.Header().Add(k, v)
+					}
+
 					writer.Write([]byte(response.Content))
 					return
 				}
@@ -264,12 +273,11 @@ func initFakeMarathonResponses(t *testing.T) {
 		// step: read in the test method specification
 		methodSpec, err := ioutil.ReadFile("./tests/rest-api/methods.yml")
 		if err != nil {
-			t.Fatalf("failed to read in the fake yaml responses")
+			t.Fatalf("failed to read in the fake yaml responses: %s", err)
 		}
 
-		err = yaml.Unmarshal([]byte(methodSpec), &methods)
-		if err != nil {
-			t.Fatalf("failed to unmarshal the response")
+		if err = yaml.Unmarshal([]byte(methodSpec), &methods); err != nil {
+			t.Fatalf("failed to unmarshal the response: %s", err)
 		}
 		for _, method := range methods {
 			key := fakeResponseMapKey(method.Method, method.URI, method.Scope)
@@ -287,6 +295,7 @@ func initFakeMarathonResponses(t *testing.T) {
 						// Index -1 indicates a static response.
 						Index:   -1,
 						Content: method.Content,
+						Headers: method.Headers,
 					},
 				}
 			}

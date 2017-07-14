@@ -1,5 +1,22 @@
+/*
+Copyright 2017 Devin All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package marathon
 
+// PodContainer describes a container in a pod
 type PodContainer struct {
 	Name         string                 `json:"name,omitempty"`
 	Exec         *PodExec               `json:"exec,omitempty"`
@@ -15,26 +32,31 @@ type PodContainer struct {
 	Lifecycle    PodLifecycle           `json:"lifecycle,omitempty"`
 }
 
+// PodLifecycle describes the lifecycle of a pod
 type PodLifecycle struct {
 	KillGracePeriodSeconds float64 `json:"killGracePeriodSeconds,omitempty"`
 }
 
+// PodCommand is the command to run as the entrypoint of the container
 type PodCommand struct {
 	Shell string `json:"shell,omitempty"`
 }
 
+// PodExec contains the PodCommand
 type PodExec struct {
 	Command PodCommand `json:"command,omitempty"`
 }
 
+// PodArtifact describes how to obtain a generic artifact for a pod
 type PodArtifact struct {
-	Uri        string `json:"uri,omitempty"`
+	URI        string `json:"uri,omitempty"`
 	Extract    bool   `json:"extract,omitempty"`
 	Executable bool   `json:"executable,omitempty"`
 	Cache      bool   `json:"cache,omitempty"`
 	DestPath   string `json:"destPath,omitempty"`
 }
 
+// NewPodContainer creates an empty PodContainer
 func NewPodContainer() *PodContainer {
 	return &PodContainer{
 		Endpoints:    []*PodEndpoint{},
@@ -46,11 +68,13 @@ func NewPodContainer() *PodContainer {
 	}
 }
 
+// SetName sets the name of a pod container
 func (p *PodContainer) SetName(name string) *PodContainer {
 	p.Name = name
 	return p
 }
 
+// SetCommand sets the shell command of a pod container
 func (p *PodContainer) SetCommand(name string) *PodContainer {
 	p.Exec = &PodExec{
 		Command: PodCommand{
@@ -60,48 +84,57 @@ func (p *PodContainer) SetCommand(name string) *PodContainer {
 	return p
 }
 
-func (r *PodContainer) CPUs(cpu float64) *PodContainer {
-	r.Resources.Cpus = cpu
-	return r
+// CPUs sets the CPUs of a pod container
+func (p *PodContainer) CPUs(cpu float64) *PodContainer {
+	p.Resources.Cpus = cpu
+	return p
 }
 
-func (r *PodContainer) Memory(memory float64) *PodContainer {
-	r.Resources.Mem = memory
-	return r
+// Memory sets the memory of a pod container
+func (p *PodContainer) Memory(memory float64) *PodContainer {
+	p.Resources.Mem = memory
+	return p
 }
 
-func (r *PodContainer) Storage(disk float64) *PodContainer {
-	r.Resources.Disk = disk
-	return r
+// Storage sets the storage capacity of a pod container
+func (p *PodContainer) Storage(disk float64) *PodContainer {
+	p.Resources.Disk = disk
+	return p
 }
 
-func (r *PodContainer) GPUs(gpu int32) *PodContainer {
-	r.Resources.Gpus = gpu
-	return r
+// GPUs sets the GPU requirements of a pod container
+func (p *PodContainer) GPUs(gpu int32) *PodContainer {
+	p.Resources.Gpus = gpu
+	return p
 }
 
-func (r *PodContainer) AddEndpoint(endpoint *PodEndpoint) *PodContainer {
-	r.Endpoints = append(r.Endpoints, endpoint)
-	return r
+// AddEndpoint appends an endpoint for a pod container
+func (p *PodContainer) AddEndpoint(endpoint *PodEndpoint) *PodContainer {
+	p.Endpoints = append(p.Endpoints, endpoint)
+	return p
 }
 
-func (r *PodContainer) SetImage(image *PodContainerImage) *PodContainer {
-	r.Image = image
-	return r
+// SetImage sets the image of a pod container
+func (p *PodContainer) SetImage(image *PodContainerImage) *PodContainer {
+	p.Image = image
+	return p
 }
 
+// AddEnvironment adds an environment variable for a pod container
 func (p *PodContainer) AddEnvironment(name, value string) *PodContainer {
 	p.Environment[name] = value
 	return p
 }
 
-func (p *PodContainer) SetEnvironment(env map[string]string) *PodContainer {
+// ExtendEnvironment extends the environment for a pod container
+func (p *PodContainer) ExtendEnvironment(env map[string]string) *PodContainer {
 	for k, v := range env {
 		p.AddEnvironment(k, v)
 	}
 	return p
 }
 
+// AddEnvironmentSecret adds a secret to the environment for a pod container
 func (p *PodContainer) AddEnvironmentSecret(name, secretName string) *PodContainer {
 	p.Environment[name] = EnvironmentSecret{
 		Secret: secretName,
@@ -115,26 +148,31 @@ func (p *PodContainer) SetUser(user string) *PodContainer {
 	return p
 }
 
-func (r *PodContainer) SetHealthCheck(healthcheck *PodHealthCheck) *PodContainer {
-	r.HealthCheck = healthcheck
-	return r
+// SetHealthCheck sets the health check of a pod container
+func (p *PodContainer) SetHealthCheck(healthcheck *PodHealthCheck) *PodContainer {
+	p.HealthCheck = healthcheck
+	return p
 }
 
-func (r *PodContainer) AddVolumeMount(mount *PodVolumeMount) *PodContainer {
-	r.VolumeMounts = append(r.VolumeMounts, mount)
-	return r
+// AddVolumeMount appends a volume mount to a pod container
+func (p *PodContainer) AddVolumeMount(mount *PodVolumeMount) *PodContainer {
+	p.VolumeMounts = append(p.VolumeMounts, mount)
+	return p
 }
 
-func (r *PodContainer) AddArtifact(artifact *PodArtifact) *PodContainer {
-	r.Artifacts = append(r.Artifacts, artifact)
-	return r
+// AddArtifact appends an artifact to a pod container
+func (p *PodContainer) AddArtifact(artifact *PodArtifact) *PodContainer {
+	p.Artifacts = append(p.Artifacts, artifact)
+	return p
 }
 
+// AddLabel adds a label to a pod container
 func (p *PodContainer) AddLabel(key, value string) *PodContainer {
 	p.Labels[key] = value
 	return p
 }
 
+// SetLifecycle sets the lifecycle of a pod container
 func (p *PodContainer) SetLifecycle(lifecycle PodLifecycle) *PodContainer {
 	p.Lifecycle = lifecycle
 	return p

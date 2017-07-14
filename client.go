@@ -70,19 +70,38 @@ type Marathon interface {
 	WaitOnApplication(name string, timeout time.Duration) error
 
 	// -- PODS ---
+	// whether which version of Marathon supports pods
+	SupportsPods() bool
 
 	// get pod status
 	GetPodStatus(name string) (*PodStatus, error)
+	// get all pod status
+	GetAllPodStatus() ([]*PodStatus, error)
+
+	// get pod
+	GetPod(name string) (*Pod, error)
+	// get all pods
+	GetAllPods() ([]*Pod, error)
 	// create pod
 	CreatePod(pod *Pod) (*Pod, error)
 	// update pod
-	UpdatePod(pod *Pod) (*Pod, error)
+	UpdatePod(pod *Pod, force bool) (*Pod, error)
 	// delete pod
-	DeletePod(name string) (*DeploymentID, error)
+	DeletePod(name string, force bool) (*DeploymentID, error)
 	// wait on pod to deploy
 	WaitOnPod(name string, timeout time.Duration) error
 	// pod is running
 	PodExistsAndRunning(name string) bool
+
+	// get versions of a pod
+	GetVersions(name string) ([]string, error)
+	// geet pod by version
+	GetPodByVersion(name, version string) (*Pod, error)
+
+	// delete instances of a pod
+	DeletePodInstances(name string, instances []string) ([]*PodInstance, error)
+	// delete pod instance
+	DeletePodInstance(name, instance string) (*PodInstance, error)
 
 	// -- TASKS ---
 
@@ -257,6 +276,10 @@ func (r *marathonClient) Ping() (bool, error) {
 	return true, nil
 }
 
+func (r *marathonClient) apiHead(path string, post, result interface{}) error {
+	return r.apiCall("HEAD", path, post, result)
+}
+
 func (r *marathonClient) apiGet(path string, post, result interface{}) error {
 	return r.apiCall("GET", path, post, result)
 }
@@ -317,17 +340,23 @@ func (r *marathonClient) apiCall(method, path string, body, result interface{}) 
 
 		// step: check for a successfull response
 		if response.StatusCode >= 200 && response.StatusCode <= 299 {
+
 			if result != nil {
-				if err := json.Unmarshal(respBody, result); err != nil {
-					return fmt.Errorf("failed to unmarshal response from Marathon: %s", err)
-				}
-			} else {
+				// If we have a deployment ID header and no response body, give them that
 				deploymentID := response.Header.Get(deploymentHeader)
-				if deploymentID != "" {
+				if len(respBody) == 0 && deploymentID != "" {
 					d := DeploymentID{
 						DeploymentID: deploymentID,
 					}
-					result = d
+					switch result.(type) {
+					case *DeploymentID:
+						*result.(*DeploymentID) = d
+					}
+
+				} else {
+					if err := json.Unmarshal(respBody, result); err != nil {
+						return fmt.Errorf("failed to unmarshal response from Marathon: %s", err)
+					}
 				}
 			}
 			return nil

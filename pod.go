@@ -35,8 +35,6 @@ type Pod struct {
 	Scaling           *PodScalingPolicy       `json:"scaling,omitempty"`
 	Scheduling        *PodSchedulingPolicy    `json:"scheduling,omitempty"`
 	ExecutorResources *ExecutorResources      `json:"executorResources,omitempty"`
-
-	marathonClient Marathon
 }
 
 // PodScalingPolicy is the scaling policy of the pod
@@ -226,7 +224,6 @@ func (r *marathonClient) GetPod(name string) (*Pod, error) {
 	if err := r.apiGet(uri, nil, result); err != nil {
 		return nil, err
 	}
-	result.marathonClient = r
 
 	return result, nil
 }
@@ -236,10 +233,6 @@ func (r *marathonClient) GetAllPods() ([]*Pod, error) {
 	var result []*Pod
 	if err := r.apiGet(marathonAPIPods, nil, &result); err != nil {
 		return nil, err
-	}
-
-	for _, p := range result {
-		p.marathonClient = r
 	}
 
 	return result, nil
@@ -314,21 +307,4 @@ func buildPodVersionURI(name string) string {
 
 func buildPodURI(path string) string {
 	return fmt.Sprintf("%s/%s", marathonAPIPods, trimRootPath(path))
-}
-
-func (p *Pod) Versions() (*ApplicationVersions, error) {
-	versions, err := p.marathonClient.GetVersions(p.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	appVersions := new(ApplicationVersions)
-	appVersions.Versions = versions
-	return appVersions, nil
-}
-
-func (p *Pod) Update(force bool) error {
-	_, err := p.marathonClient.UpdatePod(p, force)
-
-	return err
 }

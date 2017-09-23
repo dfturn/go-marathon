@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Rohith All rights reserved.
+Copyright 2014 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -321,12 +321,11 @@ func (s *fakeServer) PublishEvent(event string) {
 	s.eventSrv.Publish([]string{"event"}, fakeEvent{event})
 }
 
-func (s *fakeServer) Close() error {
+func (s *fakeServer) Close() {
 	s.eventSrv.Close()
 	s.httpSrv.Close()
-	return nil
 }
 
-func (e *endpoint) Close() error {
-	return e.Server.Close()
+func (e *endpoint) Close() {
+	e.Server.Close()
 }

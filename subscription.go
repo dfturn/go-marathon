@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Rohith All rights reserved.
+Copyright 2014 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -103,8 +103,7 @@ func (r *marathonClient) registerSubscription() error {
 	case EventsTransportCallback:
 		return r.registerCallbackSubscription()
 	case EventsTransportSSE:
-		r.registerSSESubscription()
-		return nil
+		return r.registerSSESubscription()
 	default:
 		return fmt.Errorf("the events transport: %d is not supported", r.config.EventsTransport)
 	}
@@ -167,9 +166,16 @@ func (r *marathonClient) registerCallbackSubscription() error {
 // connect to the SSE stream and to process the received events. To establish
 // the connection it tries the active cluster members until no more member is
 // active. When this happens it will retry to get a connection every 5 seconds.
-func (r *marathonClient) registerSSESubscription() {
+func (r *marathonClient) registerSSESubscription() error {
 	if r.subscribedToSSE {
-		return
+		return nil
+	}
+
+	if r.config.HTTPSSEClient.Timeout != 0 {
+		return fmt.Errorf(
+			"global timeout must not be set for SSE connections (found %s) -- remove global timeout from HTTP client or provide separate SSE HTTP client without global timeout",
+			r.config.HTTPSSEClient.Timeout,
+		)
 	}
 
 	go func() {
@@ -180,7 +186,6 @@ func (r *marathonClient) registerSSESubscription() {
 				<-time.After(5 * time.Second)
 				continue
 			}
-
 			err = r.listenToSSE(stream)
 			stream.Close()
 			r.debugLog.Printf("Error on SSE subscription: %s", err)
@@ -188,6 +193,7 @@ func (r *marathonClient) registerSSESubscription() {
 	}()
 
 	r.subscribedToSSE = true
+	return nil
 }
 
 // connectToSSE tries to establish an *eventsource.Stream to any of the Marathon cluster members, marking the
@@ -209,10 +215,10 @@ func (r *marathonClient) connectToSSE() (*eventsource.Stream, error) {
 		// its underlying fields for performance reasons. See note that at least the Transport
 		// should be reused here: https://golang.org/pkg/net/http/#Client
 		httpClient := &http.Client{
-			Transport:     r.config.HTTPClient.Transport,
-			CheckRedirect: r.config.HTTPClient.CheckRedirect,
-			Jar:           r.config.HTTPClient.Jar,
-			Timeout:       r.config.HTTPClient.Timeout,
+			Transport:     r.config.HTTPSSEClient.Transport,
+			CheckRedirect: r.config.HTTPSSEClient.CheckRedirect,
+			Jar:           r.config.HTTPSSEClient.Jar,
+			Timeout:       r.config.HTTPSSEClient.Timeout,
 		}
 
 		stream, err := eventsource.SubscribeWith("", httpClient, request)

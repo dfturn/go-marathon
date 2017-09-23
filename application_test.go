@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Rohith All rights reserved.
+Copyright 2014 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -199,13 +199,28 @@ func TestApplicationEnvs(t *testing.T) {
 	assert.Nil(t, app.Env)
 
 	app.AddEnv("hello", "world").AddEnv("foo", "bar")
-	assert.Equal(t, 2, len(*app.Env))
-	assert.Equal(t, "world", (*app.Env)["hello"])
-	assert.Equal(t, "bar", (*app.Env)["foo"])
-
+	if assert.Equal(t, 2, len((*app.Env))) {
+		assert.Equal(t, "world", (*app.Env)["hello"])
+		assert.Equal(t, "bar", (*app.Env)["foo"])
+	}
 	app.EmptyEnvs()
 	assert.NotNil(t, app.Env)
 	assert.Equal(t, 0, len(*app.Env))
+}
+
+func TestApplicationSecrets(t *testing.T) {
+	app := NewDockerApplication()
+	assert.Nil(t, app.Env)
+
+	app.AddSecret("MY_FIRST_SECRET", "secret0", "path/to/my/secret")
+	app.AddSecret("MY_SECOND_SECRET", "secret1", "path/to/my/other/secret")
+	if assert.Equal(t, 2, len(*app.Secrets)) {
+		assert.Equal(t, Secret{EnvVar: "MY_FIRST_SECRET", Source: "path/to/my/secret"}, (*app.Secrets)["secret0"])
+		assert.Equal(t, Secret{EnvVar: "MY_SECOND_SECRET", Source: "path/to/my/other/secret"}, (*app.Secrets)["secret1"])
+	}
+	app.EmptySecrets()
+	assert.NotNil(t, app.Secrets)
+	assert.Equal(t, 0, len(*app.Secrets))
 }
 
 func TestApplicationSetExecutor(t *testing.T) {
@@ -222,12 +237,13 @@ func TestApplicationSetExecutor(t *testing.T) {
 func TestApplicationHealthChecks(t *testing.T) {
 	app := NewDockerApplication()
 	assert.Nil(t, app.HealthChecks)
-	app.AddHealthCheck(HealthCheck{}.SetPath("/check1")).
-		AddHealthCheck(HealthCheck{}.SetPath("/check2"))
+	hc1 := NewDefaultHealthCheck()
+	hc2 := NewDefaultHealthCheck()
+	app.AddHealthCheck(*hc1).AddHealthCheck(*hc2)
 
 	assert.Equal(t, 2, len(*app.HealthChecks))
-	assert.Equal(t, HealthCheck{}.SetPath("/check1"), (*app.HealthChecks)[0])
-	assert.Equal(t, HealthCheck{}.SetPath("/check2"), (*app.HealthChecks)[1])
+	assert.Equal(t, *hc1, (*app.HealthChecks)[0])
+	assert.Equal(t, *hc2, (*app.HealthChecks)[1])
 
 	app.EmptyHealthChecks()
 	assert.NotNil(t, app.HealthChecks)
@@ -252,13 +268,16 @@ func TestApplicationReadinessChecks(t *testing.T) {
 func TestApplicationPortDefinitions(t *testing.T) {
 	app := NewDockerApplication()
 	assert.Nil(t, app.PortDefinitions)
-	app.AddPortDefinition(PortDefinition{Protocol: "tcp", Name: "es"}.SetPort(9201).AddLabel("foo", "bar")).
-		AddPortDefinition(PortDefinition{Protocol: "udp,tcp", Name: "syslog"}.SetPort(514))
+	pd1 := new(PortDefinition)
+	pd1.SetProtocol("tcp").SetName("es").SetPort(9092).AddLabel("foo", "bar")
+	pd2 := new(PortDefinition)
+	pd2.SetProtocol("udp,tcp").SetName("syslog").SetPort(514)
+	app.AddPortDefinition(*pd1).AddPortDefinition(*pd2)
 
 	assert.Equal(t, 2, len(*app.PortDefinitions))
-	assert.Equal(t, PortDefinition{Protocol: "tcp", Name: "es"}.SetPort(9201).AddLabel("foo", "bar"), (*app.PortDefinitions)[0])
+	assert.Equal(t, *pd1, (*app.PortDefinitions)[0])
 	assert.Equal(t, 1, len(*(*app.PortDefinitions)[0].Labels))
-	assert.Equal(t, PortDefinition{Protocol: "udp,tcp", Name: "syslog"}.SetPort(514), (*app.PortDefinitions)[1])
+	assert.Equal(t, *pd2, (*app.PortDefinitions)[1])
 	assert.Nil(t, (*app.PortDefinitions)[1].Labels)
 
 	(*app.PortDefinitions)[0].EmptyLabels()
@@ -347,6 +366,8 @@ func TestApplications(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, applications)
 	assert.Equal(t, len(applications.Apps), 2)
+	assert.Equal(t, (*applications.Apps[0].Secrets)["secret0"].EnvVar, "SECRET1")
+	assert.Equal(t, (*applications.Apps[0].Secrets)["secret0"].Source, "secret/definition/id")
 
 	v := url.Values{}
 	v.Set("cmd", "nginx")
@@ -530,6 +551,10 @@ func verifyApplication(application *Application, t *testing.T) {
 	assert.NotNil(t, application.Tasks)
 	assert.Equal(t, len(*application.HealthChecks), 1)
 	assert.Equal(t, len(application.Tasks), 2)
+	assert.Equal(t, application.Residency, &Residency{
+		TaskLostBehavior:                 TaskLostBehaviorTypeRelaunchAfterTimeout,
+		RelaunchEscalationTimeoutSeconds: 60,
+	})
 }
 
 func TestApplication(t *testing.T) {
@@ -724,10 +749,12 @@ func TestIPAddressPerTaskDiscovery(t *testing.T) {
 func TestUpgradeStrategy(t *testing.T) {
 	app := Application{}
 	assert.Nil(t, app.UpgradeStrategy)
-	app.SetUpgradeStrategy(UpgradeStrategy{}.SetMinimumHealthCapacity(1.0).SetMaximumOverCapacity(0.0))
-	us := app.UpgradeStrategy
-	assert.Equal(t, 1.0, *us.MinimumHealthCapacity)
-	assert.Equal(t, 0.0, *us.MaximumOverCapacity)
+	us := new(UpgradeStrategy)
+	us.SetMinimumHealthCapacity(1.0).SetMaximumOverCapacity(0.0)
+	app.SetUpgradeStrategy(*us)
+	testUs := app.UpgradeStrategy
+	assert.Equal(t, 1.0, *testUs.MinimumHealthCapacity)
+	assert.Equal(t, 0.0, *testUs.MaximumOverCapacity)
 
 	app.EmptyUpgradeStrategy()
 	us = app.UpgradeStrategy
@@ -735,4 +762,3 @@ func TestUpgradeStrategy(t *testing.T) {
 	assert.Nil(t, us.MinimumHealthCapacity)
 	assert.Nil(t, us.MaximumOverCapacity)
 }
-

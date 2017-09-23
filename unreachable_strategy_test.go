@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Rohith All rights reserved.
+Copyright 2017 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,10 +27,12 @@ import (
 func TestUnreachableStrategyAPI(t *testing.T) {
 	app := Application{}
 	require.Nil(t, app.UnreachableStrategy)
-	app.SetUnreachableStrategy(UnreachableStrategy{}.SetExpungeAfterSeconds(30.0).SetInactiveAfterSeconds(5.0))
-	us := app.UnreachableStrategy
-	assert.Equal(t, 30.0, *us.ExpungeAfterSeconds)
-	assert.Equal(t, 5.0, *us.InactiveAfterSeconds)
+	us := new(UnreachableStrategy)
+	us.SetExpungeAfterSeconds(30.0).SetInactiveAfterSeconds(5.0)
+	app.SetUnreachableStrategy(*us)
+	testUs := app.UnreachableStrategy
+	assert.Equal(t, 30.0, *testUs.ExpungeAfterSeconds)
+	assert.Equal(t, 5.0, *testUs.InactiveAfterSeconds)
 
 	app.EmptyUnreachableStrategy()
 	us = app.UnreachableStrategy

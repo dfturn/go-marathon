@@ -61,6 +61,10 @@
           0
       ],
       "requirePorts": false,
+      "residency" : {
+          "taskLostBehavior" : "RELAUNCH_AFTER_TIMEOUT",
+          "relaunchEscalationTimeoutSeconds" : 60
+      },
       "storeUrls": [],
       "upgradeStrategy": {
           "minimumHealthCapacity": 0.5,
@@ -106,7 +110,12 @@
             "dependencies": [],
             "deployments": [],
             "disk": 0.0,
-            "env": {},
+            "env": {
+                "VAR": "VALUE",
+                "SECRET1": {
+                    "secret": "secret0"
+                }
+            },
             "executor": "",
             "healthChecks": [
                 {
@@ -128,6 +137,11 @@
                 10001
             ],
             "requirePorts": false,
+            "secrets": {
+                "secret0": {
+                  "source": "secret/definition/id"
+                }
+            },
             "storeUrls": [],
             "tasksRunning": 2,
             "tasksStaged": 0,
@@ -191,6 +205,10 @@
                 10001
             ],
             "requirePorts": false,
+            "residency" : {
+                "taskLostBehavior" : "RELAUNCH_AFTER_TIMEOUT",
+                "relaunchEscalationTimeoutSeconds" : 60
+            },
             "storeUrls": [],
             "tasksRunning": 2,
             "tasksStaged": 0,
@@ -333,6 +351,7 @@
             "appId": "/toggle",
             "host": "10.141.141.10",
             "message": "Abnormal executor termination",
+            "slaveId": "14ac45bf-9a40-42cf-94ec-695130865592-S0",
             "state": "TASK_FAILED",
             "taskId": "toggle.cc427e60-5046-11e4-9e34-56847afe9799",
             "timestamp": "2014-09-12T23:23:41.711Z",
@@ -343,6 +362,10 @@
             10000
         ],
         "requirePorts": false,
+        "residency" : {
+            "taskLostBehavior" : "RELAUNCH_AFTER_TIMEOUT",
+            "relaunchEscalationTimeoutSeconds" : 60
+        },
         "storeUrls": [],
         "tasks": [
             {
@@ -449,6 +472,7 @@
             "appId": "/toggle",
             "host": "10.141.141.10",
             "message": "Abnormal executor termination",
+            "slaveId": "14ac45bf-9a40-42cf-94ec-695130865592-S0",
             "state": "TASK_FAILED",
             "taskId": "toggle.cc427e60-5046-11e4-9e34-56847afe9799",
             "timestamp": "2014-09-12T23:23:41.711Z",
@@ -459,6 +483,10 @@
             10000
         ],
         "requirePorts": false,
+        "residency" : {
+            "taskLostBehavior" : "RELAUNCH_AFTER_TIMEOUT",
+            "relaunchEscalationTimeoutSeconds" : 60
+        },
         "storeUrls": [],
         "tasks": [
             {
@@ -588,6 +616,10 @@
             10000
         ],
         "requirePorts": false,
+        "residency" : {
+            "taskLostBehavior" : "RELAUNCH_AFTER_TIMEOUT",
+            "relaunchEscalationTimeoutSeconds" : 60
+        },
         "storeUrls": [],
         "tasks": [
             {
@@ -1699,6 +1731,10 @@
                 10001
             ],
             "requirePorts": false,
+            "residency" : {
+                "taskLostBehavior" : "RELAUNCH_AFTER_TIMEOUT",
+                "relaunchEscalationTimeoutSeconds" : 60
+            },
             "storeUrls": [],
             "tasksRunning": 2,
             "tasksStaged": 0,
@@ -1865,5 +1901,26 @@
     "app": {
           "id": "/fake-app",
           "unreachableStrategy": "disabled"
+      }
+    }
+
+- uri: /v2/apps/fake-app
+  method: GET
+  scope: environment-variables
+  content: |
+    {
+    "app": {
+          "id": "/fake-app",
+          "env": {
+            "FOO": "bar",
+            "TOP": {
+              "secret": "secret"
+              }
+            },
+          "secrets":{
+            "secret": {
+              "source": "/path/to/secret"
+              }
+            }
       }
     }

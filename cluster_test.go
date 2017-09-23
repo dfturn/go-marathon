@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Rohith All rights reserved.
+Copyright 2014 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@ limitations under the License.
 package marathon
 
 import (
-	"net/http"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSize(t *testing.T) {
@@ -70,7 +70,7 @@ func TestGetMember(t *testing.T) {
 		},
 	}
 	for _, x := range cases {
-		cluster, err := newCluster(&httpClient{config: Config{HTTPClient: http.DefaultClient}}, x.MarathonURL, x.isDCOS)
+		cluster, err := newCluster(&httpClient{config: Config{HTTPClient: defaultHTTPClient}}, x.MarathonURL, x.isDCOS)
 		assert.NoError(t, err)
 		member, err := cluster.getMember()
 		assert.NoError(t, err)
@@ -82,16 +82,32 @@ func TestMarkDown(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
 	cluster, err := newStandardCluster(endpoint.URL)
-	assert.NoError(t, err)
-	assert.Equal(t, len(cluster.activeMembers()), 3)
+	require.NoError(t, err)
+	require.Equal(t, len(cluster.activeMembers()), 3)
+	cluster.healthCheckInterval = 2500 * time.Millisecond
 
 	members := cluster.activeMembers()
 	cluster.markDown(members[0])
 	cluster.markDown(members[1])
-	assert.Equal(t, 1, len(cluster.activeMembers()))
+	require.Equal(t, len(cluster.activeMembers()), 1)
 
-	time.Sleep(10 * time.Millisecond)
-	assert.Equal(t, len(cluster.activeMembers()), 3)
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+	timeout := time.NewTimer(5 * time.Second)
+	defer timeout.Stop()
+	var numFoundMembers int
+	for {
+		numFoundMembers = len(cluster.activeMembers())
+		if numFoundMembers == 3 {
+			break
+		}
+		select {
+		case <-ticker.C:
+			continue
+		case <-timeout.C:
+			t.Fatalf("found %d active member(s), want 3", numFoundMembers)
+		}
+	}
 }
 
 func TestValidClusterHosts(t *testing.T) {
@@ -169,5 +185,5 @@ func TestInvalidClusterHosts(t *testing.T) {
 }
 
 func newStandardCluster(url string) (*cluster, error) {
-	return newCluster(&httpClient{config: Config{HTTPClient: http.DefaultClient}}, url, false)
+	return newCluster(&httpClient{config: Config{HTTPClient: defaultHTTPClient}}, url, false)
 }

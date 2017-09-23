@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Rohith All rights reserved.
+Copyright 2014 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ limitations under the License.
 package marathon
 
 import (
+	"net"
+	"net/http"
 	"testing"
 	"time"
 
@@ -296,6 +298,22 @@ func TestUnsubscribe(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestSSEWithGlobalTimeout(t *testing.T) {
+	clientCfg := NewDefaultConfig()
+	clientCfg.HTTPSSEClient = &http.Client{
+		Timeout: 1 * time.Second,
+	}
+	config := configContainer{
+		client: &clientCfg,
+	}
+	config.client.EventsTransport = EventsTransportSSE
+	endpoint := newFakeMarathonEndpoint(t, &config)
+	defer endpoint.Close()
+
+	_, err := endpoint.Client.AddEventsListener(EventIDApplications)
+	assert.Error(t, err)
+}
+
 func TestEventStreamEventsReceived(t *testing.T) {
 	require.True(t, len(testCases) > 1, "must have at least 2 test cases to end prematurely")
 
@@ -313,7 +331,7 @@ func TestEventStreamEventsReceived(t *testing.T) {
 	almostAllTestCases := testCases[:len(testCases)-1]
 	finalTestCase := testCases[len(testCases)-1]
 
-	// Let a bit time pass so that the SSE subscription can connect
+	// Give it a bit of time so that the subscription can be set up
 	time.Sleep(SSEConnectWaitTime)
 
 	// Publish all but one test event.
@@ -371,8 +389,10 @@ func TestConnectToSSESuccess(t *testing.T) {
 	client.hosts.members = append(client.hosts.members, &member{endpoint: endpoint.Server.httpSrv.URL})
 
 	// Connection should work as one of the Marathon members is up
-	_, err := client.connectToSSE()
-	assert.NoError(t, err, "expected no error in connectToSSE")
+	stream, err := client.connectToSSE()
+	if assert.NoError(t, err, "expected no error in connectToSSE") {
+		stream.Close()
+	}
 }
 
 func TestConnectToSSEFailure(t *testing.T) {
@@ -386,12 +406,23 @@ func TestConnectToSSEFailure(t *testing.T) {
 	client := endpoint.Client.(*marathonClient)
 
 	// No Marathon member is up, we should get an error
-	_, err := client.connectToSSE()
-	assert.Error(t, err, "expected error in connectToSSE when all cluster members are down")
+	stream, err := client.connectToSSE()
+	if !assert.Error(t, err, "expected error in connectToSSE when all cluster members are down") {
+		stream.Close()
+	}
 }
 
 func TestRegisterSEESubscriptionReconnectsStreamOnError(t *testing.T) {
 	clientCfg := NewDefaultConfig()
+	clientCfg.HTTPSSEClient = &http.Client{
+		Transport: &http.Transport{
+			Dial: (&net.Dialer{
+				// set timeout to a small fraction of SSEConnectWaitTime to give client enough time
+				// to detect error and reconnect during sleep
+				Timeout: SSEConnectWaitTime / 10,
+			}).Dial,
+		},
+	}
 	clientCfg.EventsTransport = EventsTransportSSE
 	config := configContainer{client: &clientCfg}
 
@@ -406,10 +437,13 @@ func TestRegisterSEESubscriptionReconnectsStreamOnError(t *testing.T) {
 	events, err := endpoint1.Client.AddEventsListener(EventIDApplications)
 	require.NoError(t, err)
 
+	// Give it a bit of time so that the subscription can be set up
+	time.Sleep(SSEConnectWaitTime)
+
 	// This should make the SSE subscription fail and reconnect to another cluster member
 	endpoint1.Close()
 
-	// Let a bit time so that subscription can reconnect
+	// Give it a bit of time so that the subscription can reconnect
 	time.Sleep(SSEConnectWaitTime)
 
 	// Now that our SSE subscription failed over, we can publish on the second server and the message should be consumed

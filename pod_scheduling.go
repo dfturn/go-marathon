@@ -31,7 +31,7 @@ type PodUpgrade struct {
 
 // PodPlacement supports constraining which hosts a pod is placed on
 type PodPlacement struct {
-	Constraints           *[][]string `json:"constraints"`
+	Constraints           *[]Constraint `json:"constraints"`
 	AcceptedResourceRoles []string    `json:"acceptedResourceRoles,omitempty"`
 }
 
@@ -42,19 +42,26 @@ type PodSchedulingPolicy struct {
 	Placement *PodPlacement `json:"placement,omitempty"`
 }
 
+// Constraint describes the constraint for pod placement
+type Constraint struct {
+	FieldName  string `json:"fieldName"`
+	Operator   string `json:"operator"`
+	Value      string `json:"value,omitempty"`
+}
+
 // NewPodPlacement creates an empty PodPlacement
 func NewPodPlacement() *PodPlacement {
 	return &PodPlacement{
-		Constraints:           &[][]string{},
+		Constraints:           &[]Constraint{},
 		AcceptedResourceRoles: []string{},
 	}
 }
 
 // AddConstraint adds a new constraint
 //		constraints:	the constraint definition, one constraint per array element
-func (r *PodPlacement) AddConstraint(constraints ...string) *PodPlacement {
+func (r *PodPlacement) AddConstraint(constraint Constraint) *PodPlacement {
 	c := *r.Constraints
-	c = append(c, constraints)
+	c = append(c, constraint)
 	r.Constraints = &c
 
 	return r

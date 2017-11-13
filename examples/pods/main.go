@@ -22,7 +22,7 @@ import (
 	"log"
 	"time"
 
-	marathon "github.com/gambol99/go-marathon"
+	marathon "github.com/dfturn/go-marathon" // TODO Need to convert to gambol99 prior to merging
 )
 
 var marathonURL string

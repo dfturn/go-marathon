@@ -173,6 +173,13 @@ func (p *Pod) AddSecret(name, value string) *Pod {
 	return p
 }
 
+// AddFullSecret will add the secret to both the secret source and the environment
+func (p *Pod) AddFullSecret(secretName, envVar, sourceName string) *Pod {
+	p = p.AddSecret(secretName, sourceName)
+	p = p.AddEnvironmentSecret(envVar, secretName)
+	return p
+}
+
 // AddVolume adds a volume to a pod
 func (p *Pod) AddVolume(vol *PodVolume) *Pod {
 	p.Volumes = append(p.Volumes, vol)

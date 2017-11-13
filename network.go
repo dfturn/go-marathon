@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Devin All rights reserved.
+Copyright 2017 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,10 +16,19 @@ limitations under the License.
 
 package marathon
 
+// PodNetworkMode is the mode of a network descriptor
+type PodNetworkMode string
+
+const (
+	ContainerNetworkMode PodNetworkMode = "container"
+	BridgeNetworkMode    PodNetworkMode = "container/bridge"
+	HostNetworkMode      PodNetworkMode = "host"
+)
+
 // PodNetwork contains network descriptors for a pod
 type PodNetwork struct {
 	Name   string            `json:"name,omitempty"`
-	Mode   string            `json:"mode,omitempty"`
+	Mode   PodNetworkMode    `json:"mode,omitempty"`
 	Labels map[string]string `json:"labels,omitempty"`
 }
 
@@ -51,7 +60,7 @@ func NewPodEndpoint() *PodEndpoint {
 // NewContainerPodNetwork creates a PodNetwork for a container
 func NewContainerPodNetwork(name string) *PodNetwork {
 	pn := NewPodNetwork(name)
-	return pn.SetMode("container")
+	return pn.SetMode(ContainerNetworkMode)
 }
 
 // SetName sets the name of a PodNetwork
@@ -61,7 +70,7 @@ func (n *PodNetwork) SetName(name string) *PodNetwork {
 }
 
 // SetMode sets the mode of a PodNetwork
-func (n *PodNetwork) SetMode(mode string) *PodNetwork {
+func (n *PodNetwork) SetMode(mode PodNetworkMode) *PodNetwork {
 	n.Mode = mode
 	return n
 }

@@ -71,18 +71,18 @@ type Marathon interface {
 	WaitOnApplication(name string, timeout time.Duration) error
 
 	// -- PODS ---
-	// whether which version of Marathon supports pods
-	SupportsPods() bool
+	// whether this version of Marathon supports pods
+	SupportsPods() (bool, error)
 
 	// get pod status
-	GetPodStatus(name string) (*PodStatus, error)
+	PodStatus(name string) (*PodStatus, error)
 	// get all pod status
-	GetAllPodStatus() ([]*PodStatus, error)
+	PodStatuses() ([]*PodStatus, error)
 
 	// get pod
-	GetPod(name string) (*Pod, error)
+	Pod(name string) (*Pod, error)
 	// get all pods
-	GetAllPods() ([]*Pod, error)
+	Pods() ([]Pod, error)
 	// create pod
 	CreatePod(pod *Pod) (*Pod, error)
 	// update pod
@@ -95,9 +95,9 @@ type Marathon interface {
 	PodExistsAndRunning(name string) bool
 
 	// get versions of a pod
-	GetVersions(name string) ([]string, error)
-	// geet pod by version
-	GetPodByVersion(name, version string) (*Pod, error)
+	PodVersions(name string) ([]string, error)
+	// get pod by version
+	PodByVersion(name, version string) (*Pod, error)
 
 	// delete instances of a pod
 	DeletePodInstances(name string, instances []string) ([]*PodInstance, error)
@@ -376,11 +376,9 @@ func (r *marathonClient) apiCall(method, path string, body, result interface{}) 
 					d := DeploymentID{
 						DeploymentID: deploymentID,
 					}
-					switch result.(type) {
-					case *DeploymentID:
-						*result.(*DeploymentID) = d
+					if deployID, ok := result.(*DeploymentID); ok {
+						*deployID = d
 					}
-
 				} else {
 					if err := json.Unmarshal(respBody, result); err != nil {
 						return fmt.Errorf("failed to unmarshal response from Marathon: %s", err)
@@ -399,6 +397,24 @@ func (r *marathonClient) apiCall(method, path string, body, result interface{}) 
 		}
 
 		return NewAPIError(response.StatusCode, respBody)
+	}
+}
+
+// waitOnService waits until the provided function returns true (or times out)
+func (r *marathonClient) waitOnService(name string, timeout time.Duration, fn func(string) bool) error {
+	timeoutTimer := time.After(timeout)
+
+	for c := time.Tick(r.config.PollingWaitTime); ; {
+		if fn(name) {
+			return nil
+		}
+
+		select {
+		case <-timeoutTimer:
+			return ErrTimeoutError
+		case <-c:
+			continue
+		}
 	}
 }
 

@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Devin All rights reserved.
+Copyright 2017 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ type StatusCondition struct {
 	LastUpdated string `json:"lastUpdated,omitempty"`
 }
 
-// ContainerStatus is all of the status for a container
+// ContainerStatus contains all status information for a container instance
 type ContainerStatus struct {
 	Conditions  []*StatusCondition         `json:"conditions,omitempty"`
 	ContainerID string                     `json:"containerId,omitempty"`

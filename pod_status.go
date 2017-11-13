@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Devin All rights reserved.
+Copyright 2017 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,9 +75,8 @@ func (p *PodStatus) String() string {
 	return string(s)
 }
 
-// GetPodStatus retrieves the pod configuration from marathon
-// 		name: 		the id used to identify the pod
-func (r *marathonClient) GetPodStatus(name string) (*PodStatus, error) {
+// PodStatus retrieves the pod configuration from marathon
+func (r *marathonClient) PodStatus(name string) (*PodStatus, error) {
 	var podStatus PodStatus
 
 	if err := r.apiGet(buildPodStatusURI(name), nil, &podStatus); err != nil {
@@ -87,8 +86,8 @@ func (r *marathonClient) GetPodStatus(name string) (*PodStatus, error) {
 	return &podStatus, nil
 }
 
-// GetAllPodStatus retrieves all pod configuration from marathon
-func (r *marathonClient) GetAllPodStatus() ([]*PodStatus, error) {
+// PodStatuses retrieves all pod configuration from marathon
+func (r *marathonClient) PodStatuses() ([]*PodStatus, error) {
 	var podStatuses []*PodStatus
 
 	if err := r.apiGet(buildPodStatusURI(""), nil, &podStatuses); err != nil {
@@ -98,33 +97,14 @@ func (r *marathonClient) GetAllPodStatus() ([]*PodStatus, error) {
 	return podStatuses, nil
 }
 
-// WaitOnPod waits for a pod to be deployed
-//		name:		the id of the pod
-//		timeout:	a duration of time to wait for an pod to deploy
+// WaitOnPod blocks until a pod to be deployed
 func (r *marathonClient) WaitOnPod(name string, timeout time.Duration) error {
-	if r.PodExistsAndRunning(name) {
-		return nil
-	}
-
-	timeoutTimer := time.After(timeout)
-	ticker := time.NewTicker(r.config.PollingWaitTime)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-timeoutTimer:
-			return ErrTimeoutError
-		case <-ticker.C:
-			if r.PodExistsAndRunning(name) {
-				return nil
-			}
-		}
-	}
+	return r.waitOnService(name, timeout, r.PodExistsAndRunning)
 }
 
 // PodExistsAndRunning returns whether the pod is stably running
 func (r *marathonClient) PodExistsAndRunning(name string) bool {
-	podStatus, err := r.GetPodStatus(name)
+	podStatus, err := r.PodStatus(name)
 	if apiErr, ok := err.(*APIError); ok && apiErr.ErrCode == ErrCodeNotFound {
 		return false
 	}

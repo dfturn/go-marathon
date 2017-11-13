@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Devin All rights reserved.
+Copyright 2017 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,19 +17,24 @@ limitations under the License.
 package marathon
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const key = "testKey"
 const val = "testValue"
 
 const fakePodName = "/fake-pod"
+const secondFakePodName = "/fake-pod2"
 
 func TestPodLabels(t *testing.T) {
 	pod := NewPod()
 	pod.AddLabel(key, val)
-	assert.Equal(t, pod.Labels[key], val)
+	if assert.Equal(t, len(pod.Labels), 1) {
+		assert.Equal(t, pod.Labels[key], val)
+	}
 
 	pod.EmptyLabels()
 	assert.Equal(t, len(pod.Labels), 0)
@@ -69,29 +74,41 @@ func TestSecrets(t *testing.T) {
 
 func TestSupportsPod(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
-	defer endpoint.Close()
 
-	supports := endpoint.Client.SupportsPods()
-	assert.Equal(t, supports, true)
+	supports, err := endpoint.Client.SupportsPods()
+	if assert.Nil(t, err) {
+
+		assert.Equal(t, supports, true)
+	}
+
+	// Manually closing to test lack of support
+	endpoint.Close()
+
+	supports, err = endpoint.Client.SupportsPods()
+	assert.NotNil(t, err)
+	assert.Equal(t, supports, false)
 }
-
 func TestGetPod(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
 
-	pod, err := endpoint.Client.GetPod(fakePodName)
-	assert.NoError(t, err)
-	assert.NotNil(t, pod)
-	assert.Equal(t, pod.ID, fakePodName)
+	pod, err := endpoint.Client.Pod(fakePodName)
+	require.NoError(t, err)
+	if assert.NotNil(t, pod) {
+		assert.Equal(t, pod.ID, fakePodName)
+	}
 }
 
 func TestGetAllPods(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
 
-	pods, err := endpoint.Client.GetAllPods()
-	assert.NoError(t, err)
-	assert.Equal(t, pods[0].ID, fakePodName)
+	pods, err := endpoint.Client.Pods()
+	require.NoError(t, err)
+	if assert.Equal(t, len(pods), 2) {
+		assert.Equal(t, pods[0].ID, fakePodName)
+		assert.Equal(t, pods[1].ID, secondFakePodName)
+	}
 }
 
 func TestCreatePod(t *testing.T) {
@@ -100,9 +117,10 @@ func TestCreatePod(t *testing.T) {
 
 	pod := NewPod().Name(fakePodName)
 	pod, err := endpoint.Client.CreatePod(pod)
-	assert.NoError(t, err)
-	assert.NotNil(t, pod)
-	assert.Equal(t, pod.ID, fakePodName)
+	require.NoError(t, err)
+	if assert.NotNil(t, pod) {
+		assert.Equal(t, pod.ID, fakePodName)
+	}
 }
 
 func TestUpdatePod(t *testing.T) {
@@ -111,11 +129,15 @@ func TestUpdatePod(t *testing.T) {
 
 	pod := NewPod().Name(fakePodName)
 	pod, err := endpoint.Client.CreatePod(pod)
+	require.NoError(t, err)
+
 	pod, err = endpoint.Client.UpdatePod(pod, true)
-	assert.NoError(t, err)
-	assert.NotNil(t, pod)
-	assert.Equal(t, pod.ID, fakePodName)
-	assert.Equal(t, pod.Scaling.Instances, 2)
+	require.NoError(t, err)
+
+	if assert.NotNil(t, pod) {
+		assert.Equal(t, pod.ID, fakePodName)
+		assert.Equal(t, pod.Scaling.Instances, 2)
+	}
 }
 
 func TestDeletePod(t *testing.T) {
@@ -123,17 +145,19 @@ func TestDeletePod(t *testing.T) {
 	defer endpoint.Close()
 
 	id, err := endpoint.Client.DeletePod(fakePodName, true)
-	assert.NoError(t, err)
-	assert.NotNil(t, id)
-	assert.Equal(t, id.DeploymentID, "c0e7434c-df47-4d23-99f1-78bd78662231")
+	require.NoError(t, err)
+
+	if assert.NotNil(t, id) {
+		assert.Equal(t, id.DeploymentID, "c0e7434c-df47-4d23-99f1-78bd78662231")
+	}
 }
 
 func TestVersions(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
 
-	versions, err := endpoint.Client.GetVersions(fakePodName)
-	assert.NoError(t, err)
+	versions, err := endpoint.Client.PodVersions(fakePodName)
+	require.NoError(t, err)
 	assert.Equal(t, versions[0], "2014-08-18T22:36:41.451Z")
 }
 
@@ -141,8 +165,7 @@ func TestGetPodByVersion(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
 
-	pod, err := endpoint.Client.GetPodByVersion(fakePodName, "2014-08-18T22:36:41.451Z")
-	assert.NoError(t, err)
+	pod, err := endpoint.Client.PodByVersion(fakePodName, "2014-08-18T22:36:41.451Z")
+	require.NoError(t, err)
 	assert.Equal(t, pod.ID, fakePodName)
 }
-

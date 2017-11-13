@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Devin All rights reserved.
+Copyright 2017 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ limitations under the License.
 package marathon
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const fakePodInstanceName = "fake-pod.instance-dc6cfe60-6812-11e7-a18e-70b3d5800003"
@@ -28,7 +30,7 @@ func TestDeletePodInstance(t *testing.T) {
 	defer endpoint.Close()
 
 	podInstance, err := endpoint.Client.DeletePodInstance(fakePodName, fakePodInstanceName)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, podInstance.InstanceID.ID, fakePodInstanceName)
 }
 
@@ -38,6 +40,6 @@ func TestDeletePodInstances(t *testing.T) {
 
 	instances := []string{fakePodInstanceName}
 	podInstances, err := endpoint.Client.DeletePodInstances(fakePodName, instances)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, podInstances[0].InstanceID.ID, fakePodInstanceName)
 }

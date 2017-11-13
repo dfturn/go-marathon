@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Devin All rights reserved.
+Copyright 2017 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,27 +17,31 @@ limitations under the License.
 package marathon
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetPodStatus(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
 
-	podStatus, err := endpoint.Client.GetPodStatus(fakePodName)
-	assert.NoError(t, err)
-	assert.NotNil(t, podStatus)
-	assert.Equal(t, podStatus.Spec.ID, fakePodName)
+	podStatus, err := endpoint.Client.PodStatus(fakePodName)
+	require.NoError(t, err)
+
+	if assert.NotNil(t, podStatus) {
+		assert.Equal(t, podStatus.Spec.ID, fakePodName)
+	}
 }
 
 func TestGetAllPodStatus(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
 
-	podStatuses, err := endpoint.Client.GetAllPodStatus()
-	assert.NoError(t, err)
+	podStatuses, err := endpoint.Client.PodStatuses()
+	require.NoError(t, err)
 	assert.Equal(t, podStatuses[0].Spec.ID, fakePodName)
 }
 
@@ -46,7 +50,7 @@ func TestWaitOnPod(t *testing.T) {
 	defer endpoint.Close()
 
 	err := endpoint.Client.WaitOnPod(fakePodName, 1*time.Microsecond)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPodExistsAndRunning(t *testing.T) {
@@ -55,4 +59,10 @@ func TestPodExistsAndRunning(t *testing.T) {
 
 	exists := endpoint.Client.PodExistsAndRunning(fakePodName)
 	assert.True(t, exists)
+
+	exists = endpoint.Client.PodExistsAndRunning("not_existing")
+	assert.False(t, exists)
+
+	exists = endpoint.Client.PodExistsAndRunning(secondFakePodName)
+	assert.False(t, exists)
 }

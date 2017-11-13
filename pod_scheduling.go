@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Devin All rights reserved.
+Copyright 2017 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,15 +18,15 @@ package marathon
 
 // PodBackoff describes the backoff for re-run attempts of a pod
 type PodBackoff struct {
-	Backoff        int     `json:"backoff"`
-	BackoffFactor  float64 `json:"backoffFactor"`
-	MaxLaunchDelay int     `json:"maxLaunchDelay"`
+	Backoff        *int     `json:"backoff,omitempty"`
+	BackoffFactor  *float64 `json:"backoffFactor,omitempty"`
+	MaxLaunchDelay *int     `json:"maxLaunchDelay,omitempty"`
 }
 
 // PodUpgrade describes the policy for upgrading a pod in-place
 type PodUpgrade struct {
-	MinimumHealthCapacity int `json:"minimumHealthCapacity"`
-	MaximumOverCapacity   int `json:"maximumOverCapacity"`
+	MinimumHealthCapacity *int `json:"minimumHealthCapacity,omitempty"`
+	MaximumOverCapacity   *int `json:"maximumOverCapacity,omitempty"`
 }
 
 // PodPlacement supports constraining which hosts a pod is placed on

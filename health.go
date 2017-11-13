@@ -52,11 +52,11 @@ type PodHealthCheck struct {
 	HTTP                   *HTTPHealthCheck    `json:"http,omitempty"`
 	TCP                    *TCPHealthCheck     `json:"tcp,omitempty"`
 	Exec                   *CommandHealthCheck `json:"exec,omitempty"`
-	GracePeriodSeconds     int                 `json:"gracePeriodSeconds,omitempty"`
-	IntervalSeconds        int                 `json:"intervalSeconds,omitempty"`
-	MaxConsecutiveFailures int                 `json:"maxConsecutiveFailures,omitempty"`
-	TimeoutSeconds         int                 `json:"timeoutSeconds,omitempty"`
-	DelaySeconds           int                 `json:"delaySeconds,omitempty"`
+	GracePeriodSeconds     *int                `json:"gracePeriodSeconds,omitempty"`
+	IntervalSeconds        *int                `json:"intervalSeconds,omitempty"`
+	MaxConsecutiveFailures *int                `json:"maxConsecutiveFailures,omitempty"`
+	TimeoutSeconds         *int                `json:"timeoutSeconds,omitempty"`
+	DelaySeconds           *int                `json:"delaySeconds,omitempty"`
 }
 
 // SetCommand sets the given command on the health check.

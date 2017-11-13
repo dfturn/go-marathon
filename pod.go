@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Devin All rights reserved.
+Copyright 2017 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -208,17 +208,16 @@ func (p *Pod) SetExecutorResources(resources *ExecutorResources) *Pod {
 
 // SupportsPods determines if this version of marathon supports pods
 // If HEAD returns 200 it does
-func (r *marathonClient) SupportsPods() bool {
+func (r *marathonClient) SupportsPods() (bool, error) {
 	if err := r.apiHead(marathonAPIPods, nil, nil); err != nil {
-		return false
+		return false, err
 	}
 
-	return true
+	return true, nil
 }
 
-// GetPod gets a pod from marathon
-// 		name: 		the id used to identify the pod
-func (r *marathonClient) GetPod(name string) (*Pod, error) {
+// Pod gets a pod object from marathon by name
+func (r *marathonClient) Pod(name string) (*Pod, error) {
 	uri := buildPodURI(name)
 	result := new(Pod)
 	if err := r.apiGet(uri, nil, result); err != nil {
@@ -228,9 +227,9 @@ func (r *marathonClient) GetPod(name string) (*Pod, error) {
 	return result, nil
 }
 
-// GetAllPods gets all pods from marathon
-func (r *marathonClient) GetAllPods() ([]*Pod, error) {
-	var result []*Pod
+// Pods gets all pods from marathon
+func (r *marathonClient) Pods() ([]Pod, error) {
+	var result []Pod
 	if err := r.apiGet(marathonAPIPods, nil, &result); err != nil {
 		return nil, err
 	}
@@ -239,7 +238,6 @@ func (r *marathonClient) GetAllPods() ([]*Pod, error) {
 }
 
 // CreatePod creates a new pod in Marathon
-// 		pod:		the structure holding the pod configuration
 func (r *marathonClient) CreatePod(pod *Pod) (*Pod, error) {
 	result := new(Pod)
 	if err := r.apiPost(marathonAPIPods, &pod, result); err != nil {
@@ -250,11 +248,9 @@ func (r *marathonClient) CreatePod(pod *Pod) (*Pod, error) {
 }
 
 // DeletePod deletes a pod from marathon
-// 		name: 		the id used to identify the pod
-// 		force: 		whether
 func (r *marathonClient) DeletePod(name string, force bool) (*DeploymentID, error) {
 	uri := fmt.Sprintf("%s?force=%v", buildPodURI(name), force)
-	// step: check of the pod already exists
+
 	deployID := new(DeploymentID)
 	if err := r.apiDelete(uri, nil, deployID); err != nil {
 		return nil, err
@@ -263,12 +259,11 @@ func (r *marathonClient) DeletePod(name string, force bool) (*DeploymentID, erro
 	return deployID, nil
 }
 
-// CreatePod creates a new pod in Marathon
-// 		pod:		the structure holding the pod configuration
+// UpdatePod creates a new pod in Marathon
 func (r *marathonClient) UpdatePod(pod *Pod, force bool) (*Pod, error) {
 	uri := fmt.Sprintf("%s?force=%v", buildPodURI(pod.ID), force)
 	result := new(Pod)
-	// step: check of the pod already exists
+
 	if err := r.apiPut(uri, pod, result); err != nil {
 		return nil, err
 	}
@@ -276,9 +271,8 @@ func (r *marathonClient) UpdatePod(pod *Pod, force bool) (*Pod, error) {
 	return result, nil
 }
 
-// GetVersions gets the versions of a pod
-// 		name:		the id of the pod
-func (r *marathonClient) GetVersions(name string) ([]string, error) {
+// PodVersions gets all the deployed versions of a pod
+func (r *marathonClient) PodVersions(name string) ([]string, error) {
 	uri := buildPodVersionURI(name)
 	var result []string
 	if err := r.apiGet(uri, nil, &result); err != nil {
@@ -288,10 +282,8 @@ func (r *marathonClient) GetVersions(name string) ([]string, error) {
 	return result, nil
 }
 
-// GetPodByVersion gets a pod by a version
-// 		name:		the id of the pod
-// 		version:	the version of the pod
-func (r *marathonClient) GetPodByVersion(name, version string) (*Pod, error) {
+// PodByVersion gets a pod by a version identifier
+func (r *marathonClient) PodByVersion(name, version string) (*Pod, error) {
 	uri := fmt.Sprintf("%s/%s", buildPodVersionURI(name), version)
 	result := new(Pod)
 	if err := r.apiGet(uri, nil, result); err != nil {

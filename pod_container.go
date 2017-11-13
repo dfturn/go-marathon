@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Devin All rights reserved.
+Copyright 2017 The go-marathon Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ type PodContainer struct {
 
 // PodLifecycle describes the lifecycle of a pod
 type PodLifecycle struct {
-	KillGracePeriodSeconds float64 `json:"killGracePeriodSeconds,omitempty"`
+	KillGracePeriodSeconds *float64 `json:"killGracePeriodSeconds,omitempty"`
 }
 
 // PodCommand is the command to run as the entrypoint of the container

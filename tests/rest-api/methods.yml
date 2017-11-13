@@ -775,6 +775,80 @@
       "lastUpdated": "2017-07-13T22:13:46.635Z",
       "lastChanged": "2017-07-13T21:33:17.349Z"
     }
+- uri: /v2/pods/fake-pod2::status
+  method: GET
+  content: |
+    {
+      "id": "/fake-pod2",
+      "spec": {
+        "id": "/fake-pod2",
+        "labels": {
+          "key": "value"
+        },
+        "version": "2014-08-18T22:36:41.451Z",
+        "user": "nobody",
+        "environment": {
+          "key": {
+            "secret": "secret0"
+          }
+        },
+        "containers": [],
+        "secrets": {
+          "secret0": {
+            "source": "source0"
+          }
+        },
+        "volumes": [],
+        "networks": [],
+        "scaling": {
+          "kind": "fixed",
+          "instances": 1
+        },
+        "scheduling": {}
+      },
+      "status": "DEGRADED",
+      "statusSince": "2017-07-13T21:33:17.349Z",
+      "instances": [
+        {
+          "id": "fake-pod2.instance-dc6cfe60-6812-11e7-a18e-70b3d5800003",
+          "status": "DEGRADED",
+          "statusSince": "2017-07-13T21:33:17.349Z",
+          "conditions": [],
+          "agentHostname": "192.168.99.100",
+          "resources": {
+            "cpus": 0.1,
+            "mem": 64,
+            "disk": 0,
+            "gpus": 0
+          },
+          "networks": [],
+          "containers": [
+            {
+              "name": "container1",
+              "status": "TASK_RUNNING",
+              "statusSince": "2017-07-13T21:33:17.349Z",
+              "conditions": [],
+              "containerId": "fake-pod.instance-dc6cfe60-6812-11e7-a18e-70b3d5800003.container1",
+              "endpoints": [],
+              "resources": {
+                "cpus": 0.1,
+                "mem": 32,
+                "disk": 0,
+                "gpus": 0
+              },
+              "lastUpdated": "2017-07-13T21:33:17.349Z",
+              "lastChanged": "2017-07-13T21:33:17.349Z"
+            }
+          ],
+          "specReference": "/v2/pods/fake-pod::versions/2017-07-13T21:33:07.389Z",
+          "lastUpdated": "2017-07-13T21:33:17.349Z",
+          "lastChanged": "2017-07-13T21:33:17.349Z"
+        }
+      ],
+      "terminationHistory": [],
+      "lastUpdated": "2017-07-13T22:13:46.635Z",
+      "lastChanged": "2017-07-13T21:33:17.349Z"
+    }
 - uri: /v2/pods/::status
   method: GET
   content: |
@@ -894,6 +968,40 @@
     [
       {
         "id": "/fake-pod",
+        "labels": {
+            "key": "value"
+        },
+        "version": "2014-08-18T22:36:41.451Z",
+        "user": "nobody",
+        "environment": {
+            "key": "value",
+            "key": {
+                "secret": "secret0"
+            }
+        },
+        "containers": [
+        ],
+        "secrets": {
+            "secret0": {
+                "source": "source0"
+            }
+        },
+        "volumes": [
+
+        ],
+        "networks": [
+
+        ],
+        "scaling": {
+            "kind": "fixed",
+            "instances": 1
+        },
+        "scheduling": {
+
+        }
+      },
+      {
+        "id": "/fake-pod2",
         "labels": {
             "key": "value"
         },

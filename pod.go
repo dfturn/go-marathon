@@ -17,7 +17,6 @@ limitations under the License.
 package marathon
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
@@ -54,16 +53,6 @@ func NewPod() *Pod {
 		Volumes:     []*PodVolume{},
 		Networks:    []*PodNetwork{},
 	}
-}
-
-// String marshals the pod as an indented string
-func (p *Pod) String() string {
-	s, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		return fmt.Sprintf(`{"error": "error decoding type into json: %s"}`, err)
-	}
-
-	return string(s)
 }
 
 // Name sets the name / ID of the pod i.e. the identifier for this pod
@@ -216,7 +205,12 @@ func (p *Pod) SetExecutorResources(resources *ExecutorResources) *Pod {
 // SupportsPods determines if this version of marathon supports pods
 // If HEAD returns 200 it does
 func (r *marathonClient) SupportsPods() (bool, error) {
-	if err := r.apiHead(marathonAPIPods, nil, nil); err != nil {
+	if err := r.apiHead(marathonAPIPods, nil); err != nil {
+		// If we get a 404 we can return a strict false, otherwise it could be
+		// a valid error
+		if apiErr, ok := err.(*APIError); ok && apiErr.ErrCode == ErrCodeNotFound {
+			return false, nil
+		}
 		return false, err
 	}
 

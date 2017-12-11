@@ -810,7 +810,7 @@ func (r *marathonClient) CreateApplication(application *Application) (*Applicati
 //		name:		the id of the application
 //		timeout:	a duration of time to wait for an application to deploy
 func (r *marathonClient) WaitOnApplication(name string, timeout time.Duration) error {
-	return r.waitOnService(name, timeout, r.appExistAndRunning)
+	return r.wait(name, timeout, r.appExistAndRunning)
 }
 
 func (r *marathonClient) appExistAndRunning(name string) bool {

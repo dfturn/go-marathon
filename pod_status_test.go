@@ -53,16 +53,16 @@ func TestWaitOnPod(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestPodExistsAndRunning(t *testing.T) {
+func TestPodIsRunning(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
 
-	exists := endpoint.Client.PodExistsAndRunning(fakePodName)
+	exists := endpoint.Client.PodIsRunning(fakePodName)
 	assert.True(t, exists)
 
-	exists = endpoint.Client.PodExistsAndRunning("not_existing")
+	exists = endpoint.Client.PodIsRunning("not_existing")
 	assert.False(t, exists)
 
-	exists = endpoint.Client.PodExistsAndRunning(secondFakePodName)
+	exists = endpoint.Client.PodIsRunning(secondFakePodName)
 	assert.False(t, exists)
 }

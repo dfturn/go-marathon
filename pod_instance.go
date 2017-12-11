@@ -17,7 +17,6 @@ limitations under the License.
 package marathon
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -77,16 +76,6 @@ type PodNetworkInfo struct {
 	HostName    string      `json:"hostName"`
 	HostPorts   []int       `json:"hostPorts"`
 	IPAddresses []IPAddress `json:"ipAddresses"`
-}
-
-// String marshals the pod as an indented string
-func (p *PodInstance) String() string {
-	s, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		return fmt.Sprintf(`{"error": "error decoding type into json: %s"}`, err)
-	}
-
-	return string(s)
 }
 
 // DeletePodInstances deletes all instances of the named pod

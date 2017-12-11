@@ -22,7 +22,7 @@ import (
 	"log"
 	"time"
 
-	marathon "github.com/dfturn/go-marathon" // TODO Need to convert to gambol99 prior to merging
+	marathon "github.com/gambol99/go-marathon"
 )
 
 var marathonURL string
@@ -139,6 +139,7 @@ func doPlayground(client marathon.Marathon, pod *marathon.Pod) {
 
 	// Get instances
 	status, err := client.PodStatus(pod.ID)
+	fmt.Printf("Pod status: %s\n", status.Status)
 	assert(err)
 
 	// Kill an instance
@@ -162,9 +163,11 @@ func main() {
 	client, err := marathon.NewClient(config)
 	assert(err)
 
+	fmt.Println("Convenience Pods:")
 	podC := createConveniencePod()
 	doPlayground(client, podC)
 
+	fmt.Println("Raw Pods:")
 	podR := createRawPod()
 	doPlayground(client, podR)
 }

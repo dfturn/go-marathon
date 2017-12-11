@@ -76,7 +76,7 @@ type Marathon interface {
 
 	// get pod status
 	PodStatus(name string) (*PodStatus, error)
-	// get all pod status
+	// get all pod statuses
 	PodStatuses() ([]*PodStatus, error)
 
 	// get pod
@@ -89,10 +89,10 @@ type Marathon interface {
 	UpdatePod(pod *Pod, force bool) (*Pod, error)
 	// delete pod
 	DeletePod(name string, force bool) (*DeploymentID, error)
-	// wait on pod to deploy
+	// wait on pod to be deployed
 	WaitOnPod(name string, timeout time.Duration) error
-	// pod is running
-	PodExistsAndRunning(name string) bool
+	// check if a pod is running
+	PodIsRunning(name string) bool
 
 	// get versions of a pod
 	PodVersions(name string) ([]string, error)
@@ -304,8 +304,8 @@ func (r *marathonClient) Ping() (bool, error) {
 	return true, nil
 }
 
-func (r *marathonClient) apiHead(path string, post, result interface{}) error {
-	return r.apiCall("HEAD", path, post, result)
+func (r *marathonClient) apiHead(path string, result interface{}) error {
+	return r.apiCall("HEAD", path, nil, result)
 }
 
 func (r *marathonClient) apiGet(path string, post, result interface{}) error {
@@ -345,7 +345,6 @@ func (r *marathonClient) apiCall(method, path string, body, result interface{}) 
 
 		// step: perform the API request
 		response, err := r.client.Do(request)
-
 		if err != nil {
 			r.hosts.markDown(member)
 			// step: attempt the request on another member
@@ -368,9 +367,10 @@ func (r *marathonClient) apiCall(method, path string, body, result interface{}) 
 
 		// step: check for a successfull response
 		if response.StatusCode >= 200 && response.StatusCode <= 299 {
-
 			if result != nil {
 				// If we have a deployment ID header and no response body, give them that
+				// This specifically handles the use case of a DELETE on an app/pod
+				// We need a way to retrieve the deployment ID
 				deploymentID := response.Header.Get(deploymentHeader)
 				if len(respBody) == 0 && deploymentID != "" {
 					d := DeploymentID{
@@ -400,19 +400,22 @@ func (r *marathonClient) apiCall(method, path string, body, result interface{}) 
 	}
 }
 
-// waitOnService waits until the provided function returns true (or times out)
-func (r *marathonClient) waitOnService(name string, timeout time.Duration, fn func(string) bool) error {
-	timeoutTimer := time.After(timeout)
+// wait waits until the provided function returns true (or times out)
+func (r *marathonClient) wait(name string, timeout time.Duration, fn func(string) bool) error {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 
-	for c := time.Tick(r.config.PollingWaitTime); ; {
+	ticker := time.NewTicker(r.config.PollingWaitTime)
+	defer ticker.Stop()
+	for {
 		if fn(name) {
 			return nil
 		}
 
 		select {
-		case <-timeoutTimer:
+		case <-timer.C:
 			return ErrTimeoutError
-		case <-c:
+		case <-ticker.C:
 			continue
 		}
 	}

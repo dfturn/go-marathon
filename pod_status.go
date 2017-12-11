@@ -17,7 +17,6 @@ limitations under the License.
 package marathon
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -65,16 +64,6 @@ type ContainerTerminationHistory struct {
 	Termination    *ContainerTerminationState `json:"termination,omitempty"`
 }
 
-// String marshals the pod as an indented string
-func (p *PodStatus) String() string {
-	s, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		return fmt.Sprintf(`{"error": "error decoding type into json: %s"}`, err)
-	}
-
-	return string(s)
-}
-
 // PodStatus retrieves the pod configuration from marathon
 func (r *marathonClient) PodStatus(name string) (*PodStatus, error) {
 	var podStatus PodStatus
@@ -99,11 +88,11 @@ func (r *marathonClient) PodStatuses() ([]*PodStatus, error) {
 
 // WaitOnPod blocks until a pod to be deployed
 func (r *marathonClient) WaitOnPod(name string, timeout time.Duration) error {
-	return r.waitOnService(name, timeout, r.PodExistsAndRunning)
+	return r.wait(name, timeout, r.PodIsRunning)
 }
 
-// PodExistsAndRunning returns whether the pod is stably running
-func (r *marathonClient) PodExistsAndRunning(name string) bool {
+// PodIsRunning returns whether the pod is stably running
+func (r *marathonClient) PodIsRunning(name string) bool {
 	podStatus, err := r.PodStatus(name)
 	if apiErr, ok := err.(*APIError); ok && apiErr.ErrCode == ErrCodeNotFound {
 		return false

@@ -44,13 +44,13 @@ func TestPodEnvironmentVars(t *testing.T) {
 	pod := NewPod()
 	pod.AddEnvironment(key, val)
 
-	newVal, err := pod.GetEnvironmentVariable(key)
+	newVal, ok := pod.Environment[key]
 	assert.Equal(t, newVal, val)
-	assert.Equal(t, err, nil)
+	assert.Equal(t, ok, true)
 
-	badVal, err := pod.GetEnvironmentVariable("fakeKey")
+	badVal, ok := pod.Environment["fakeKey"]
 	assert.Equal(t, badVal, "")
-	assert.NotNil(t, err)
+	assert.Equal(t, ok, false)
 
 	pod.EmptyEnvironment()
 	assert.Equal(t, len(pod.Environment), 0)
@@ -58,7 +58,7 @@ func TestPodEnvironmentVars(t *testing.T) {
 
 func TestSecrets(t *testing.T) {
 	pod := NewPod()
-	pod.AddSecret(key, val)
+	pod.AddSecret("randomVar", key, val)
 
 	newVal, err := pod.GetSecretSource(key)
 	assert.Equal(t, newVal, val)

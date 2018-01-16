@@ -18,18 +18,19 @@ package marathon
 
 // PodContainer describes a container in a pod
 type PodContainer struct {
-	Name         string                 `json:"name,omitempty"`
-	Exec         *PodExec               `json:"exec,omitempty"`
-	Resources    *Resources             `json:"resources,omitempty"`
-	Endpoints    []*PodEndpoint         `json:"endpoints,omitempty"`
-	Image        *PodContainerImage     `json:"image,omitempty"`
-	Environment  map[string]interface{} `json:"environment,omitempty"`
-	User         string                 `json:"user,omitempty"`
-	HealthCheck  *PodHealthCheck        `json:"healthCheck,omitempty"`
-	VolumeMounts []*PodVolumeMount      `json:"volumeMounts,omitempty"`
-	Artifacts    []*PodArtifact         `json:"artifacts,omitempty"`
-	Labels       map[string]string      `json:"labels,omitempty"`
-	Lifecycle    PodLifecycle           `json:"lifecycle,omitempty"`
+	Name         string             `json:"name,omitempty"`
+	Exec         *PodExec           `json:"exec,omitempty"`
+	Resources    *Resources         `json:"resources,omitempty"`
+	Endpoints    []*PodEndpoint     `json:"endpoints,omitempty"`
+	Image        *PodContainerImage `json:"image,omitempty"`
+	Environment  map[string]string  `json:"-"`
+	Secrets      map[string]Secret  `json:"-"`
+	User         string             `json:"user,omitempty"`
+	HealthCheck  *PodHealthCheck    `json:"healthCheck,omitempty"`
+	VolumeMounts []*PodVolumeMount  `json:"volumeMounts,omitempty"`
+	Artifacts    []*PodArtifact     `json:"artifacts,omitempty"`
+	Labels       map[string]string  `json:"labels,omitempty"`
+	Lifecycle    PodLifecycle       `json:"lifecycle,omitempty"`
 }
 
 // PodLifecycle describes the lifecycle of a pod
@@ -60,7 +61,7 @@ type PodArtifact struct {
 func NewPodContainer() *PodContainer {
 	return &PodContainer{
 		Endpoints:    []*PodEndpoint{},
-		Environment:  map[string]interface{}{},
+		Environment:  map[string]string{},
 		VolumeMounts: []*PodVolumeMount{},
 		Artifacts:    []*PodArtifact{},
 		Labels:       map[string]string{},
@@ -120,25 +121,38 @@ func (p *PodContainer) SetImage(image *PodContainerImage) *PodContainer {
 	return p
 }
 
+// EmptyEnvironment initialized env to empty
+func (p *PodContainer) EmptyEnvironment() *PodContainer {
+	p.Environment = make(map[string]string)
+	return p
+}
+
 // AddEnvironment adds an environment variable for a pod container
 func (p *PodContainer) AddEnvironment(name, value string) *PodContainer {
+	if p.Environment == nil {
+		p = p.EmptyEnvironment()
+	}
 	p.Environment[name] = value
 	return p
 }
 
 // ExtendEnvironment extends the environment for a pod container
 func (p *PodContainer) ExtendEnvironment(env map[string]string) *PodContainer {
+	if p.Environment == nil {
+		p = p.EmptyEnvironment()
+	}
 	for k, v := range env {
 		p.AddEnvironment(k, v)
 	}
 	return p
 }
 
-// AddEnvironmentSecret adds a secret to the environment for a pod container
-func (p *PodContainer) AddEnvironmentSecret(name, secretName string) *PodContainer {
-	p.Environment[name] = EnvironmentSecret{
-		Secret: secretName,
+// AddSecret adds a secret to the environment for a pod container
+func (p *PodContainer) AddSecret(name, secretName string) *PodContainer {
+	if p.Environment == nil {
+		p = p.EmptyEnvironment()
 	}
+	p.Environment[name] = secretName
 	return p
 }
 

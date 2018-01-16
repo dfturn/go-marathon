@@ -22,18 +22,21 @@ import (
 
 // Pod is the definition for an pod in marathon
 type Pod struct {
-	ID                string                  `json:"id,omitempty"`
-	Labels            map[string]string       `json:"labels,omitempty"`
-	Version           string                  `json:"version,omitempty"`
-	User              string                  `json:"user,omitempty"`
-	Environment       map[string]interface{}  `json:"environment,omitempty"`
-	Containers        []*PodContainer         `json:"containers,omitempty"`
-	Secrets           map[string]SecretSource `json:"secrets,omitempty"`
-	Volumes           []*PodVolume            `json:"volumes,omitempty"`
-	Networks          []*PodNetwork           `json:"networks,omitempty"`
-	Scaling           *PodScalingPolicy       `json:"scaling,omitempty"`
-	Scheduling        *PodSchedulingPolicy    `json:"scheduling,omitempty"`
-	ExecutorResources *ExecutorResources      `json:"executorResources,omitempty"`
+	ID      string            `json:"id,omitempty"`
+	Labels  map[string]string `json:"labels,omitempty"`
+	Version string            `json:"version,omitempty"`
+	User    string            `json:"user,omitempty"`
+	// Non-secret environment variables. Actual secrets are stored in Secrets
+	// Magic happens at marshaling/unmarshaling to get them into the correct schema
+	Environment map[string]string `json:"-"`
+	Secrets     map[string]Secret `json:"-"`
+	Containers  []*PodContainer   `json:"containers,omitempty"`
+	//SecretSources     map[string]SecretSource `json:"secrets,omitempty"`
+	Volumes           []*PodVolume         `json:"volumes,omitempty"`
+	Networks          []*PodNetwork        `json:"networks,omitempty"`
+	Scaling           *PodScalingPolicy    `json:"scaling,omitempty"`
+	Scheduling        *PodSchedulingPolicy `json:"scheduling,omitempty"`
+	ExecutorResources *ExecutorResources   `json:"executorResources,omitempty"`
 }
 
 // PodScalingPolicy is the scaling policy of the pod
@@ -47,9 +50,9 @@ type PodScalingPolicy struct {
 func NewPod() *Pod {
 	return &Pod{
 		Labels:      map[string]string{},
-		Environment: map[string]interface{}{},
+		Environment: map[string]string{},
 		Containers:  []*PodContainer{},
-		Secrets:     map[string]SecretSource{},
+		Secrets:     map[string]Secret{},
 		Volumes:     []*PodVolume{},
 		Networks:    []*PodNetwork{},
 	}
@@ -87,49 +90,27 @@ func (p *Pod) SetLabels(labels map[string]string) *Pod {
 
 // EmptyEnvironment empties the environment variables for a pod
 func (p *Pod) EmptyEnvironment() *Pod {
-	p.Environment = make(map[string]interface{})
+	p.Environment = make(map[string]string)
 	return p
 }
 
 // AddEnvironment adds an environment variable to a pod
 func (p *Pod) AddEnvironment(name, value string) *Pod {
+	if p.Environment == nil {
+		p = p.EmptyEnvironment()
+	}
 	p.Environment[name] = value
 	return p
 }
 
 // ExtendEnvironment extends the environment with the new environment variables
 func (p *Pod) ExtendEnvironment(env map[string]string) *Pod {
+	if p.Environment == nil {
+		p = p.EmptyEnvironment()
+	}
+
 	for k, v := range env {
 		p.AddEnvironment(k, v)
-	}
-	return p
-}
-
-// GetEnvironmentVariable gets the string contained in an environment variable
-func (p *Pod) GetEnvironmentVariable(name string) (string, error) {
-	str := ""
-	var err error
-
-	if val, ok := p.Environment[name]; ok {
-		switch val.(type) {
-		case string:
-			str = val.(string)
-			err = nil
-		case EnvironmentSecret:
-			err = fmt.Errorf("environment variable refers to a secret")
-		default:
-			err = fmt.Errorf("environment variable refers to unknown type")
-		}
-	} else {
-		err = fmt.Errorf("environment variable not found")
-	}
-	return str, err
-}
-
-// AddEnvironmentSecret adds a secret to a pod
-func (p *Pod) AddEnvironmentSecret(name, secretName string) *Pod {
-	p.Environment[name] = EnvironmentSecret{
-		Secret: secretName,
 	}
 	return p
 }
@@ -142,7 +123,7 @@ func (p *Pod) AddContainer(container *PodContainer) *Pod {
 
 // EmptySecrets empties the secret sources in a pod
 func (p *Pod) EmptySecrets() *Pod {
-	p.Secrets = make(map[string]SecretSource)
+	p.Secrets = make(map[string]Secret)
 	return p
 }
 
@@ -154,18 +135,12 @@ func (p *Pod) GetSecretSource(name string) (string, error) {
 	return "", fmt.Errorf("secret does not exist")
 }
 
-// AddSecret adds a secret source to a pod
-func (p *Pod) AddSecret(name, value string) *Pod {
-	p.Secrets[name] = SecretSource{
-		Source: value,
+// AddSecret will add the secret to both the secret source and the environment
+func (p *Pod) AddSecret(envVar, secretName, sourceName string) *Pod {
+	if p.Secrets == nil {
+		p = p.EmptySecrets()
 	}
-	return p
-}
-
-// AddFullSecret will add the secret to both the secret source and the environment
-func (p *Pod) AddFullSecret(secretName, envVar, sourceName string) *Pod {
-	p = p.AddSecret(secretName, sourceName)
-	p = p.AddEnvironmentSecret(envVar, secretName)
+	p.Secrets[secretName] = Secret{EnvVar: envVar, Source: sourceName}
 	return p
 }
 

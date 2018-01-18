@@ -68,7 +68,7 @@ func createRawPod() *marathon.Pod {
 				Cpus: 0.1,
 				Mem:  128,
 			},
-			Environment: map[string]interface{}{
+			Environment: map[string]string{
 				"key": "value",
 			},
 		}

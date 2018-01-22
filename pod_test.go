@@ -42,18 +42,18 @@ func TestPodLabels(t *testing.T) {
 
 func TestPodEnvironmentVars(t *testing.T) {
 	pod := NewPod()
-	pod.AddEnvironment(key, val)
+	pod.AddEnv(key, val)
 
-	newVal, ok := pod.Environment[key]
+	newVal, ok := pod.Env[key]
 	assert.Equal(t, newVal, val)
 	assert.Equal(t, ok, true)
 
-	badVal, ok := pod.Environment["fakeKey"]
+	badVal, ok := pod.Env["fakeKey"]
 	assert.Equal(t, badVal, "")
 	assert.Equal(t, ok, false)
 
-	pod.EmptyEnvironment()
-	assert.Equal(t, len(pod.Environment), 0)
+	pod.EmptyEnvs()
+	assert.Equal(t, len(pod.Env), 0)
 }
 
 func TestSecrets(t *testing.T) {
@@ -69,7 +69,7 @@ func TestSecrets(t *testing.T) {
 	assert.NotNil(t, err)
 
 	pod.EmptySecrets()
-	assert.Equal(t, len(pod.Environment), 0)
+	assert.Equal(t, len(pod.Env), 0)
 }
 
 func TestSupportsPod(t *testing.T) {

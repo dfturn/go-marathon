@@ -30,8 +30,8 @@ type PodAlias Pod
 func (p *Pod) UnmarshalJSON(b []byte) error {
 	aux := &struct {
 		*PodAlias
-		Environment map[string]interface{} `json:"environment"`
-		Secrets     map[string]TmpSecret   `json:"secrets"`
+		Env     map[string]interface{} `json:"environment"`
+		Secrets map[string]TmpSecret   `json:"secrets"`
 	}{
 		PodAlias: (*PodAlias)(p),
 	}
@@ -41,7 +41,7 @@ func (p *Pod) UnmarshalJSON(b []byte) error {
 	env := map[string]string{}
 	secrets := map[string]Secret{}
 
-	for envName, genericEnvValue := range aux.Environment {
+	for envName, genericEnvValue := range aux.Env {
 		switch envValOrSecret := genericEnvValue.(type) {
 		case string:
 			env[envName] = envValOrSecret
@@ -51,13 +51,13 @@ func (p *Pod) UnmarshalJSON(b []byte) error {
 					secrets[secStore] = Secret{EnvVar: envName}
 					break
 				}
-				return fmt.Errorf("unexpected secret field %v or value type %T", secret, envValOrSecret[secret])
+				return fmt.Errorf("unexpected secret field %v of value type %T", secret, envValOrSecret[secret])
 			}
 		default:
 			return fmt.Errorf("unexpected environment variable type %T", envValOrSecret)
 		}
 	}
-	p.Environment = env
+	p.Env = env
 	for k, v := range aux.Secrets {
 		tmp := secrets[k]
 		tmp.Source = v.Source
@@ -75,8 +75,8 @@ func (p *Pod) MarshalJSON() ([]byte, error) {
 	env := make(map[string]interface{})
 	secrets := make(map[string]TmpSecret)
 
-	if p.Environment != nil {
-		for k, v := range p.Environment {
+	if p.Env != nil {
+		for k, v := range p.Env {
 			env[string(k)] = string(v)
 		}
 	}
@@ -92,9 +92,9 @@ func (p *Pod) MarshalJSON() ([]byte, error) {
 	}
 	aux := &struct {
 		*PodAlias
-		Environment map[string]interface{} `json:"environment,omitempty"`
-		Secrets     map[string]TmpSecret   `json:"secrets,omitempty"`
-	}{PodAlias: (*PodAlias)(p), Environment: env, Secrets: secrets}
+		Env     map[string]interface{} `json:"environment,omitempty"`
+		Secrets map[string]TmpSecret   `json:"secrets,omitempty"`
+	}{PodAlias: (*PodAlias)(p), Env: env, Secrets: secrets}
 
 	return json.Marshal(aux)
 }

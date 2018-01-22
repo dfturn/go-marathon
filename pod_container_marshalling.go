@@ -30,7 +30,7 @@ type PodContainerAlias PodContainer
 func (p *PodContainer) UnmarshalJSON(b []byte) error {
 	aux := &struct {
 		*PodContainerAlias
-		Environment map[string]interface{} `json:"environment"`
+		Env map[string]interface{} `json:"environment"`
 	}{
 		PodContainerAlias: (*PodContainerAlias)(p),
 	}
@@ -40,7 +40,7 @@ func (p *PodContainer) UnmarshalJSON(b []byte) error {
 	env := map[string]string{}
 	secrets := map[string]Secret{}
 
-	for envName, genericEnvValue := range aux.Environment {
+	for envName, genericEnvValue := range aux.Env {
 		switch envValOrSecret := genericEnvValue.(type) {
 		case string:
 			env[envName] = envValOrSecret
@@ -50,13 +50,13 @@ func (p *PodContainer) UnmarshalJSON(b []byte) error {
 					secrets[secStore] = Secret{EnvVar: envName}
 					break
 				}
-				return fmt.Errorf("unexpected secret field %v or value type %T", secret, envValOrSecret[secret])
+				return fmt.Errorf("unexpected secret field %v of value type %T", secret, envValOrSecret[secret])
 			}
 		default:
 			return fmt.Errorf("unexpected environment variable type %T", envValOrSecret)
 		}
 	}
-	p.Environment = env
+	p.Env = env
 	for k, v := range aux.Secrets {
 		tmp := secrets[k]
 		tmp.Source = v.Source
@@ -74,8 +74,8 @@ func (p *PodContainer) MarshalJSON() ([]byte, error) {
 	env := make(map[string]interface{})
 	secrets := make(map[string]TmpSecret)
 
-	if p.Environment != nil {
-		for k, v := range p.Environment {
+	if p.Env != nil {
+		for k, v := range p.Env {
 			env[string(k)] = string(v)
 		}
 	}
@@ -87,8 +87,8 @@ func (p *PodContainer) MarshalJSON() ([]byte, error) {
 	}
 	aux := &struct {
 		*PodContainerAlias
-		Environment map[string]interface{} `json:"environment,omitempty"`
-	}{PodContainerAlias: (*PodContainerAlias)(p), Environment: env}
+		Env map[string]interface{} `json:"environment,omitempty"`
+	}{PodContainerAlias: (*PodContainerAlias)(p), Env: env}
 
 	return json.Marshal(aux)
 }

@@ -32,7 +32,7 @@ func TestPodEnvironmentVariableUnmarshal(t *testing.T) {
 	pod, err := endpoint.Client.Pod(fakePodName)
 	require.NoError(t, err)
 
-	env := pod.Environment
+	env := pod.Env
 	secrets := pod.Secrets
 
 	require.NotNil(t, env)
@@ -40,7 +40,7 @@ func TestPodEnvironmentVariableUnmarshal(t *testing.T) {
 	assert.Equal(t, "key2", secrets["secret0"].EnvVar)
 	assert.Equal(t, "source0", secrets["secret0"].Source)
 
-	assert.Equal(t, "value3", pod.Containers[0].Environment["key3"])
+	assert.Equal(t, "value3", pod.Containers[0].Env["key3"])
 	assert.Equal(t, "key4", pod.Containers[0].Secrets["secret1"].EnvVar)
 	assert.Equal(t, "source1", secrets["secret1"].Source)
 }
@@ -87,12 +87,12 @@ func TestPodEnvironmentVariableMarshal(t *testing.T) {
 	testPod := new(Pod)
 	targetString := []byte(`{"containers":[{"lifecycle":{},"environment":{"FOO2":"bar2","TOP2":"secret1"}}],"environment":{"FOO":"bar","TOP":{"secret":"secret1"}},"secrets":{"secret1":{"source":"/path/to/secret"}}}`)
 
-	testPod.AddEnvironment("FOO", "bar")
+	testPod.AddEnv("FOO", "bar")
 	testPod.AddSecret("TOP", "secret1", "/path/to/secret")
 
 	testContainer := new(PodContainer)
 	testContainer.AddSecret("TOP2", "secret1")
-	testContainer.AddEnvironment("FOO2", "bar2")
+	testContainer.AddEnv("FOO2", "bar2")
 	testPod.AddContainer(testContainer)
 
 	pod, err := json.Marshal(testPod)

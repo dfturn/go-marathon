@@ -68,7 +68,7 @@ func createRawPod() *marathon.Pod {
 				Cpus: 0.1,
 				Mem:  128,
 			},
-			Environment: map[string]string{
+			Env: map[string]string{
 				"key": "value",
 			},
 		}
@@ -110,7 +110,7 @@ func createConveniencePod() *marathon.Pod {
 			CPUs(0.1).
 			Memory(128).
 			SetImage(image).
-			AddEnvironment("key", "value").
+			AddEnv("key", "value").
 			AddVolumeMount(marathon.NewPodVolumeMount("sharedvolume", "/peers")).
 			SetCommand("echo Hello World && sleep 600")
 

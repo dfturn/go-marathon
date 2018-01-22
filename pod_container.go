@@ -23,7 +23,7 @@ type PodContainer struct {
 	Resources    *Resources         `json:"resources,omitempty"`
 	Endpoints    []*PodEndpoint     `json:"endpoints,omitempty"`
 	Image        *PodContainerImage `json:"image,omitempty"`
-	Environment  map[string]string  `json:"-"`
+	Env          map[string]string  `json:"-"`
 	Secrets      map[string]Secret  `json:"-"`
 	User         string             `json:"user,omitempty"`
 	HealthCheck  *PodHealthCheck    `json:"healthCheck,omitempty"`
@@ -61,7 +61,7 @@ type PodArtifact struct {
 func NewPodContainer() *PodContainer {
 	return &PodContainer{
 		Endpoints:    []*PodEndpoint{},
-		Environment:  map[string]string{},
+		Env:          map[string]string{},
 		VolumeMounts: []*PodVolumeMount{},
 		Artifacts:    []*PodArtifact{},
 		Labels:       map[string]string{},
@@ -122,37 +122,37 @@ func (p *PodContainer) SetImage(image *PodContainerImage) *PodContainer {
 }
 
 // EmptyEnvironment initialized env to empty
-func (p *PodContainer) EmptyEnvironment() *PodContainer {
-	p.Environment = make(map[string]string)
+func (p *PodContainer) EmptyEnvs() *PodContainer {
+	p.Env = make(map[string]string)
 	return p
 }
 
 // AddEnvironment adds an environment variable for a pod container
-func (p *PodContainer) AddEnvironment(name, value string) *PodContainer {
-	if p.Environment == nil {
-		p = p.EmptyEnvironment()
+func (p *PodContainer) AddEnv(name, value string) *PodContainer {
+	if p.Env == nil {
+		p = p.EmptyEnvs()
 	}
-	p.Environment[name] = value
+	p.Env[name] = value
 	return p
 }
 
 // ExtendEnvironment extends the environment for a pod container
-func (p *PodContainer) ExtendEnvironment(env map[string]string) *PodContainer {
-	if p.Environment == nil {
-		p = p.EmptyEnvironment()
+func (p *PodContainer) ExtendEnv(env map[string]string) *PodContainer {
+	if p.Env == nil {
+		p = p.EmptyEnvs()
 	}
 	for k, v := range env {
-		p.AddEnvironment(k, v)
+		p.AddEnv(k, v)
 	}
 	return p
 }
 
 // AddSecret adds a secret to the environment for a pod container
 func (p *PodContainer) AddSecret(name, secretName string) *PodContainer {
-	if p.Environment == nil {
-		p = p.EmptyEnvironment()
+	if p.Env == nil {
+		p = p.EmptyEnvs()
 	}
-	p.Environment[name] = secretName
+	p.Env[name] = secretName
 	return p
 }
 

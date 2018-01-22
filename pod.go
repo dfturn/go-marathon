@@ -28,10 +28,9 @@ type Pod struct {
 	User    string            `json:"user,omitempty"`
 	// Non-secret environment variables. Actual secrets are stored in Secrets
 	// Magic happens at marshaling/unmarshaling to get them into the correct schema
-	Environment map[string]string `json:"-"`
-	Secrets     map[string]Secret `json:"-"`
-	Containers  []*PodContainer   `json:"containers,omitempty"`
-	//SecretSources     map[string]SecretSource `json:"secrets,omitempty"`
+	Env               map[string]string    `json:"-"`
+	Secrets           map[string]Secret    `json:"-"`
+	Containers        []*PodContainer      `json:"containers,omitempty"`
 	Volumes           []*PodVolume         `json:"volumes,omitempty"`
 	Networks          []*PodNetwork        `json:"networks,omitempty"`
 	Scaling           *PodScalingPolicy    `json:"scaling,omitempty"`
@@ -49,12 +48,12 @@ type PodScalingPolicy struct {
 // NewPod create an empty pod
 func NewPod() *Pod {
 	return &Pod{
-		Labels:      map[string]string{},
-		Environment: map[string]string{},
-		Containers:  []*PodContainer{},
-		Secrets:     map[string]Secret{},
-		Volumes:     []*PodVolume{},
-		Networks:    []*PodNetwork{},
+		Labels:     map[string]string{},
+		Env:        map[string]string{},
+		Containers: []*PodContainer{},
+		Secrets:    map[string]Secret{},
+		Volumes:    []*PodVolume{},
+		Networks:   []*PodNetwork{},
 	}
 }
 
@@ -88,29 +87,29 @@ func (p *Pod) SetLabels(labels map[string]string) *Pod {
 	return p
 }
 
-// EmptyEnvironment empties the environment variables for a pod
-func (p *Pod) EmptyEnvironment() *Pod {
-	p.Environment = make(map[string]string)
+// EmptyEnvs empties the environment variables for a pod
+func (p *Pod) EmptyEnvs() *Pod {
+	p.Env = make(map[string]string)
 	return p
 }
 
-// AddEnvironment adds an environment variable to a pod
-func (p *Pod) AddEnvironment(name, value string) *Pod {
-	if p.Environment == nil {
-		p = p.EmptyEnvironment()
+// AddEnv adds an environment variable to a pod
+func (p *Pod) AddEnv(name, value string) *Pod {
+	if p.Env == nil {
+		p = p.EmptyEnvs()
 	}
-	p.Environment[name] = value
+	p.Env[name] = value
 	return p
 }
 
-// ExtendEnvironment extends the environment with the new environment variables
-func (p *Pod) ExtendEnvironment(env map[string]string) *Pod {
-	if p.Environment == nil {
-		p = p.EmptyEnvironment()
+// ExtendEnv extends the environment with the new environment variables
+func (p *Pod) ExtendEnv(env map[string]string) *Pod {
+	if p.Env == nil {
+		p = p.EmptyEnvs()
 	}
 
 	for k, v := range env {
-		p.AddEnvironment(k, v)
+		p.AddEnv(k, v)
 	}
 	return p
 }
@@ -135,7 +134,7 @@ func (p *Pod) GetSecretSource(name string) (string, error) {
 	return "", fmt.Errorf("secret does not exist")
 }
 
-// AddSecret will add the secret to both the secret source and the environment
+// AddSecret adds the secret to the pod
 func (p *Pod) AddSecret(envVar, secretName, sourceName string) *Pod {
 	if p.Secrets == nil {
 		p = p.EmptySecrets()
